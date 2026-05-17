@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZAFA — Ropa Vintage Y2K</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --black:#0d0d0d; --cream:#f0e8d8; --gold:#c9a84c; --rust:#c4522a;
+    --muted:#5a5248; --card:#161410; --border:#2a2520; --green:#25D366;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--black);color:var(--cream);font-family:'DM Sans',sans-serif;overflow-x:hidden;}
+  body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");pointer-events:none;z-index:999;opacity:.5;}
+
+  /* NAV */
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:16px 40px;background:rgba(13,13,13,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.2em;color:var(--cream);text-decoration:none;}
+  .logo em{color:var(--gold);font-style:normal;}
+  .nav-links{display:flex;gap:22px;align-items:center;}
+  .nav-links a{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--muted);text-decoration:none;transition:color .2s;}
+  .nav-links a:hover{color:var(--cream);}
+  .nav-wa{background:transparent;color:var(--muted)!important;border:1px solid var(--border);padding:7px 14px;border-radius:2px;}
+  .nav-wa:hover{border-color:var(--muted)!important;color:var(--cream)!important;}
+  .nav-reg{background:var(--gold)!important;color:var(--black)!important;padding:7px 16px;border-radius:2px;font-weight:700!important;cursor:pointer;border:none;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;}
+  .nav-reg:hover{background:var(--cream)!important;}
+  .user-tag{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--gold);}
+  .user-dot{width:6px;height:6px;background:var(--gold);border-radius:50%;}
+
+  /* HERO */
+  .hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 40px 80px;position:relative;overflow:hidden;}
+  .hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 55% at 80% 50%,rgba(201,168,76,.07) 0%,transparent 70%),radial-gradient(ellipse 40% 50% at 15% 80%,rgba(196,82,42,.05) 0%,transparent 65%);}
+  .hero-eyebrow{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:12px;}
+  .hero-eyebrow::before{content:'';width:36px;height:1px;background:var(--gold);}
+  h1.hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(68px,11vw,150px);line-height:.92;letter-spacing:.02em;margin-bottom:28px;}
+  h1.hero-title .outline{-webkit-text-stroke:1px var(--cream);color:transparent;display:block;}
+  h1.hero-title .accent{color:var(--gold);display:block;font-size:clamp(38px,6.5vw,85px);}
+  .hero-sub{font-size:15px;color:var(--muted);max-width:440px;line-height:1.7;margin-bottom:36px;}
+  .hero-btns{display:flex;gap:12px;flex-wrap:wrap;}
+  .btn{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:13px 26px;border-radius:2px;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px;border:none;}
+  .btn-gold{background:var(--gold);color:var(--black);font-weight:700;}
+  .btn-gold:hover{background:var(--cream);}
+  .btn-ghost{background:transparent;color:var(--cream);border:1px solid var(--border);}
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+  .hero-side{position:absolute;right:40px;bottom:80px;display:flex;flex-direction:column;gap:20px;text-align:right;}
+  .hero-stat-n{font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--cream);line-height:1;}
+  .hero-stat-l{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;color:var(--muted);}
+
+  /* TICKER */
+  .ticker{background:var(--gold);overflow:hidden;white-space:nowrap;padding:9px 0;}
+  .ticker-track{display:inline-block;animation:tick 24s linear infinite;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.15em;color:var(--black);}
+  @keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+  /* SECTIONS */
+  section{padding:80px 40px;}
+  .sec-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:36px;border-bottom:1px solid var(--border);padding-bottom:18px;}
+  .sec-title{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:.06em;line-height:1;}
+  .sec-title em{color:var(--gold);font-style:normal;}
+  .sec-sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em;margin-top:6px;}
+  .sec-count{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;}
+
+  /* HOW */
+  .how-sec{background:#080706;}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:2px;margin-top:36px;}
+  .step{border:1px solid var(--border);padding:24px 20px;background:var(--card);}
+  .step-n{font-family:'Bebas Neue',sans-serif;font-size:60px;color:rgba(201,168,76,.12);line-height:1;margin-bottom:10px;}
+  .step-t{font-size:13px;font-weight:500;color:var(--cream);margin-bottom:6px;}
+  .step-b{font-size:12px;color:var(--muted);line-height:1.6;}
+
+  /* AUCTION */
+  .auction-sec{background:#0a0908;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+  .live-banner{background:linear-gradient(135deg,rgba(201,168,76,.09) 0%,transparent 55%);border:1px solid rgba(201,168,76,.22);border-radius:4px;padding:24px 28px;margin-bottom:36px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+  .preview-banner{background:linear-gradient(135deg,rgba(90,82,72,.2) 0%,transparent 55%);border:1px solid rgba(90,82,72,.4);border-radius:4px;padding:24px 28px;margin-bottom:36px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+  .live-dot{width:8px;height:8px;background:var(--rust);border-radius:50%;animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(196,82,42,.6)}50%{box-shadow:0 0 0 8px rgba(196,82,42,0)}}
+  .live-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.15em;color:var(--rust);display:flex;align-items:center;gap:8px;}
+  .preview-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.15em;color:var(--muted);display:flex;align-items:center;gap:8px;}
+  .live-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.06em;margin-top:6px;}
+  .live-sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);margin-top:3px;}
+  .countdown{display:flex;gap:12px;align-items:flex-start;}
+  .cd-unit{text-align:center;}
+  .cd-n{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--cream);line-height:1;display:block;min-width:44px;}
+  .cd-l{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.15em;color:var(--muted);}
+  .cd-sep{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--border);line-height:1;}
+  .auction-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px;}
+  .acard{background:var(--card);border:1px solid var(--border);overflow:hidden;cursor:pointer;transition:border-color .25s,transform .25s;position:relative;}
+  .acard:hover{border-color:var(--rust);transform:translateY(-3px);}
+  .acard .pimg{background:#130f0c;}
+  .bid-count-badge{position:absolute;top:10px;left:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;background:var(--rust);color:var(--cream);padding:2px 8px;border-radius:2px;}
+  .preview-badge{position:absolute;top:10px;left:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;background:#2a2520;color:var(--muted);padding:2px 8px;border-radius:2px;border:1px solid var(--border);}
+  .ainfo{padding:12px 14px;border-top:1px solid var(--border);}
+  .aname{font-size:13px;font-weight:500;color:var(--cream);margin-bottom:3px;}
+  .ameta{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;}
+  .bid-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;}
+  .bid-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--muted);margin-bottom:2px;}
+  .bid-amt{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);letter-spacing:.05em;line-height:1;transition:color .3s;}
+  .bid-amt.updated{color:var(--rust);}
+  .bid-right{text-align:right;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);}
+  .bid-btn{width:100%;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:10px;background:transparent;border:1px solid var(--rust);color:var(--rust);cursor:pointer;transition:all .2s;border-radius:2px;}
+  .bid-btn:hover{background:var(--rust);color:var(--cream);font-weight:700;}
+  .bid-btn:disabled{border-color:var(--border);color:var(--muted);cursor:not-allowed;}
+
+  /* SHOP */
+  .shop-sec{background:var(--black);}
+  .filters{display:flex;gap:6px;margin-bottom:28px;flex-wrap:wrap;}
+  .filt{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:5px 14px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;border-radius:2px;transition:all .2s;}
+  .filt.on,.filt:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.06);}
+  .shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px;}
+  .pcard{background:var(--card);border:1px solid var(--border);overflow:hidden;position:relative;cursor:pointer;transition:border-color .25s,transform .25s;}
+  .pcard:hover{border-color:var(--gold);transform:translateY(-3px);}
+  .pcard:hover .pcard-ov{opacity:1;}
+  .pimg{width:100%;aspect-ratio:3/4;background:#1a1612;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;font-size:64px;}
+  .pbadge{position:absolute;top:10px;left:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;padding:2px 8px;border-radius:2px;}
+  .pb-new{background:var(--gold);color:var(--black);}
+  .pb-last{background:#2a2520;color:var(--cream);border:1px solid var(--muted);}
+  .pcard-ov{position:absolute;inset:0;background:rgba(13,13,13,.72);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s;backdrop-filter:blur(2px);}
+  .pinfo{padding:12px 14px;border-top:1px solid var(--border);}
+  .pname{font-size:13px;font-weight:500;color:var(--cream);margin-bottom:3px;}
+  .pmeta{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;}
+  .pprice{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);letter-spacing:.05em;}
+  .pbuy{width:100%;margin-top:8px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:9px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .2s;border-radius:2px;}
+  .pbuy:hover{background:var(--gold);color:var(--black);border-color:var(--gold);font-weight:700;}
+
+  /* FOOTER */
+  footer{background:#080706;border-top:1px solid var(--border);padding:44px 40px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:28px;}
+  .foot-logo{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:.2em;color:var(--cream);line-height:1;margin-bottom:6px;}
+  .foot-logo em{color:var(--gold);font-style:normal;}
+  .foot-tag{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;}
+  .foot-links{display:flex;flex-direction:column;gap:10px;}
+  .foot-links a{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-decoration:none;letter-spacing:.08em;transition:color .2s;}
+  .foot-links a:hover{color:var(--gold);}
+  .foot-copy{font-family:'Space Mono',monospace;font-size:10px;color:#3a3530;letter-spacing:.06em;align-self:flex-end;}
+
+  /* MODALS */
+  .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);z-index:400;display:none;align-items:center;justify-content:center;padding:20px;}
+  .modal-ov.open{display:flex;}
+  .modal{background:var(--card);border:1px solid var(--border);max-width:460px;width:100%;padding:32px;position:relative;animation:mIn .28s ease;max-height:90vh;overflow-y:auto;}
+  @keyframes mIn{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .modal-x{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;font-family:'Space Mono',monospace;}
+  .modal-x:hover{color:var(--cream);}
+  .modal-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.08em;color:var(--cream);margin-bottom:4px;}
+  .modal-sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em;margin-bottom:20px;}
+  .modal-price{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--gold);margin-bottom:18px;}
+  .mstep{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+  .mstep-n{width:20px;height:20px;border:1px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--gold);flex-shrink:0;}
+  .mstep-t{font-size:13px;color:var(--muted);line-height:1.5;padding-top:1px;}
+  .wa-btn-lg{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--green);color:#fff;border:none;padding:15px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;font-weight:700;cursor:pointer;transition:background .2s;border-radius:2px;text-decoration:none;}
+  .wa-btn-lg:hover{background:#1da851;}
+  .wa-icon{width:18px;height:18px;flex-shrink:0;}
+  .field-row{margin-bottom:10px;}
+  .field-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:5px;}
+  .field-input{width:100%;padding:10px 12px;background:#0d0d0d;border:1px solid var(--border);color:var(--cream);font-size:13px;border-radius:2px;outline:none;transition:border-color .2s;}
+  .field-input:focus{border-color:var(--gold);}
+  .field-input::placeholder{color:var(--muted);}
+  .bid-form label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:6px;}
+  .bid-form input{width:100%;padding:12px 14px;background:#0d0d0d;border:1px solid var(--border);color:var(--cream);font-family:'Space Mono',monospace;font-size:16px;letter-spacing:.05em;border-radius:2px;outline:none;transition:border-color .2s;}
+  .bid-form input:focus{border-color:var(--gold);}
+  .bid-form input::placeholder{color:var(--muted);}
+  .bid-submit{width:100%;margin-top:10px;padding:14px;background:var(--rust);color:var(--cream);border:none;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;font-weight:700;cursor:pointer;border-radius:2px;transition:background .2s;}
+  .bid-submit:hover{background:#d4632f;}
+  .bid-submit:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
+  .bid-msg{font-size:12px;margin-top:8px;font-family:'Space Mono',monospace;letter-spacing:.06em;min-height:18px;}
+  .bid-msg.ok{color:#5de07a;}
+  .bid-msg.err{color:var(--rust);}
+  .cur-top{background:#1a1410;border:1px solid var(--border);border-radius:2px;padding:10px 14px;margin-bottom:14px;}
+  .cur-top-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--muted);margin-bottom:3px;}
+  .cur-top-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);letter-spacing:.06em;}
+  .cur-top-name{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
+  .reg-box{background:#1a1410;border:1px solid rgba(201,168,76,.2);border-radius:2px;padding:14px;margin-bottom:14px;}
+  .reg-box-title{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;}
+  .terms-row{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px;background:rgba(196,82,42,.08);border:1px solid rgba(196,82,42,.25);border-radius:2px;}
+  .terms-check{margin-top:3px;flex-shrink:0;accent-color:var(--rust);width:14px;height:14px;cursor:pointer;}
+  .terms-text{font-size:11px;color:var(--muted);line-height:1.5;cursor:pointer;}
+  .reg-submit{width:100%;margin-top:12px;padding:13px;background:var(--gold);color:var(--black);border:none;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;font-weight:700;cursor:pointer;border-radius:2px;transition:background .2s;}
+  .reg-submit:hover{background:var(--cream);}
+  .reg-submit:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
+  .toast{position:fixed;bottom:24px;right:24px;z-index:600;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:12px 18px;color:var(--cream);transform:translateY(80px);opacity:0;transition:all .3s;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;max-width:280px;}
+  .toast.show{transform:translateY(0);opacity:1;}
+  .toast.success{border-color:var(--gold);}
+  .toast.error{border-color:var(--rust);}
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s ease;}
+  .reveal.visible{opacity:1;transform:translateY(0);}
+  @media(max-width:640px){
+    nav{padding:14px 20px;}
+    .nav-links a:not(.nav-reg){display:none;}
+    section{padding:60px 20px;}
+    .hero{padding:100px 20px 60px;}
+    .hero-side{display:none;}
+    footer{padding:36px 20px;}
+  }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="#">ZAF<em>A</em></a>
+  <div class="nav-links">
+    <a href="#how">¿Cómo funciona?</a>
+    <a href="#auction" id="navAuction">Subasta</a>
+    <a href="#shop" id="navShop" style="display:none;">Tienda</a>
+    <a href="https://wa.me/50685019010" target="_blank" class="nav-wa">WhatsApp</a>
+    <div id="navUser"></div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div id="heroContent"></div>
+  <div class="hero-side" id="heroSide">
+    <div><div class="hero-stat-n" id="heroStatN">50</div><div class="hero-stat-l" id="heroStatL">PIEZAS EN SUBASTA</div></div>
+    <div><div class="hero-stat-n">48</div><div class="hero-stat-l">HORAS PARA PUJAR</div></div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker"><div class="ticker-track" id="tickerTrack">★ VINTAGE Y2K ★ LATINOAMÉRICA ★ DROP #1 ★ PIEZAS ÚNICAS ★ ENVÍOS CR ★ SINPE MÓVIL ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ DROP #1 ★ PIEZAS ÚNICAS ★ ENVÍOS CR ★ SINPE MÓVIL ★&nbsp;&nbsp;&nbsp;</div></div>
+
+<!-- HOW -->
+<section id="how" class="how-sec">
+  <div class="sec-header">
+    <div class="sec-title">¿CÓMO <em>FUNCIONA?</em></div>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="step-n">01</div><div class="step-t">Creás tu cuenta</div><div class="step-b">Solo necesitás tu nombre, WhatsApp y email. Sin tarjetas ni datos sensibles.</div></div>
+    <div class="step"><div class="step-n">02</div><div class="step-t">Explorás las piezas</div><div class="step-b">48 horas de preview antes de que abra la subasta. Planeá tu estrategia.</div></div>
+    <div class="step"><div class="step-n">03</div><div class="step-t">Ofertás en vivo</div><div class="step-b">La subasta abre por 48 horas. Las ofertas se actualizan en tiempo real para todos.</div></div>
+    <div class="step"><div class="step-n">04</div><div class="step-t">Pagás por SINPE</div><div class="step-b">Si ganás tenés 24hrs para pagar. Sin pago, la pieza pasa al siguiente ofertante.</div></div>
+  </div>
+</section>
+
+<!-- AUCTION -->
+<section id="auction" class="auction-sec">
+  <div class="sec-header reveal">
+    <div>
+      <div class="sec-title">SUBASTA <em>48HRS</em></div>
+      <div class="sec-sub" id="auctionSubtitle">Ofertas en tiempo real · Registrate para pujar</div>
+    </div>
+    <div class="sec-count" id="auctionCount">— PIEZAS</div>
+  </div>
+  <div id="auctionBanner"></div>
+  <div class="auction-grid" id="auctionGrid"></div>
+</section>
+
+<!-- SHOP — hidden until admin moves pieces here -->
+<section id="shop" class="shop-sec" style="display:none;">
+  <div class="sec-header reveal">
+    <div>
+      <div class="sec-title">TIENDA <em>ZAFA</em></div>
+      <div class="sec-sub">Precio fijo · Piezas de drops anteriores</div>
+    </div>
+    <div class="sec-count" id="shopCount">— PIEZAS</div>
+  </div>
+  <div class="filters reveal">
+    <button class="filt on" onclick="filterShop('all',this)">TODO</button>
+    <button class="filt" onclick="filterShop('camiseta',this)">CAMISETAS</button>
+    <button class="filt" onclick="filterShop('hoodie',this)">HOODIES</button>
+    <button class="filt" onclick="filterShop('jeans',this)">JEANS</button>
+    <button class="filt" onclick="filterShop('jacket',this)">JACKETS</button>
+  </div>
+  <div class="shop-grid" id="shopGrid"></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="foot-logo">ZAF<em>A</em></div>
+    <div class="foot-tag">Latinoamérica · Vintage Y2K</div>
+  </div>
+  <div class="foot-links">
+    <a href="#auction" id="footerAuction">Subasta</a>
+    <a href="#shop" id="footerShop" style="display:none;">Tienda</a>
+    <a href="#how">¿Cómo funciona?</a>
+    <a href="https://www.instagram.com/zafa.cr/" target="_blank">@zafa.cr</a>
+    <a href="https://wa.me/50685019010" target="_blank">WhatsApp</a>
+    <a href="terminos.html">Términos y condiciones</a>
+  </div>
+  <div class="foot-copy">© 2025 ZAFA · CR</div>
+</footer>
+
+<!-- BUY MODAL -->
+<div class="modal-ov" id="buyModal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('buyModal')">✕</button>
+    <div class="modal-title" id="bm-name">HOODIE VINTAGE</div>
+    <div class="modal-sub" id="bm-meta">TALLA M · EXCELENTE ESTADO</div>
+    <div class="modal-price" id="bm-price">₡10,000</div>
+    <div style="margin-bottom:20px;">
+      <div class="mstep"><div class="mstep-n">1</div><div class="mstep-t">Tocá el botón de WhatsApp aquí abajo</div></div>
+      <div class="mstep"><div class="mstep-n">2</div><div class="mstep-t">Confirmamos que la pieza está disponible</div></div>
+      <div class="mstep"><div class="mstep-n">3</div><div class="mstep-t">Pagás por SINPE Móvil y coordinamos el envío</div></div>
+    </div>
+    <a class="wa-btn-lg" id="bm-link" href="#" target="_blank">
+      <svg class="wa-icon" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      COMPRAR POR WHATSAPP
+    </a>
+  </div>
+</div>
+
+<!-- BID MODAL -->
+<div class="modal-ov" id="bidModal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('bidModal')">✕</button>
+    <div class="modal-title" id="am-name">JACKET Y2K</div>
+    <div class="modal-sub" id="am-meta">SUBASTA · CIERRA DOMINGO 6PM</div>
+    <div class="cur-top" id="curTopBox">
+      <div class="cur-top-lbl">OFERTA MÁS ALTA AHORA</div>
+      <div class="cur-top-val" id="am-topbid">₡8,500</div>
+      <div class="cur-top-name" id="am-topbidder">sé el primero en ofertar</div>
+    </div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+const SUPABASE_URL='https://zbicxqnzlddmcbvqwyws.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiaWN4cW56bGRkbWNidnF3eXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMDUyMjAsImV4cCI6MjA5Mjc4MTIyMH0.ZG9g41dcNpUuT0ufYlvMRZHo1mDlL0G45Xfr-8WScwY';
+// WA loaded from config below
+// ============================================================
+
+function getWA(){try{const s=localStorage.getItem('zafa_drop_config');if(s){const c=JSON.parse(s);if(c.whatsapp)return c.whatsapp;}return'50685019010';}catch(e){return'50685019010';}}
+// ---- SUPABASE ----
+let db=null;
+try{const{createClient}=supabase;if(SUPABASE_URL!=='YOUR_SUPABASE_URL')db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){console.warn('Supabase init failed',e);}
+
+// ---- SANITIZE ----
+function esc(str){const d=document.createElement('div');d.appendChild(document.createTextNode(String(str||'')));return d.innerHTML;}
+
+// ---- DROP CONFIG ----
+function loadDropConfig(){
+  try{
+    const s=localStorage.getItem('zafa_drop_config');
+    if(s){
+      const c=JSON.parse(s);
+      return{
+        previewStart:new Date(c.previewStart),
+        auctionStart:new Date(c.auctionStart),
+        auctionEnd:new Date(c.auctionEnd),
+        dropNum:c.dropNum||1,
+        nextDropDate:c.nextDropDate||null,
+        heroTagline:c.heroTagline||'Latinoamérica · Vintage Y2K',
+        heroDesc:c.heroDesc||'🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲',
+        endedText:c.endedText||'Estamos notificando a los ganadores.',
+        whatsapp:c.whatsapp||'50685019010',
+      };
+    }
+  }catch(e){}
+  return{
+    previewStart:new Date('2099-01-01T18:00:00-06:00'),
+    auctionStart:new Date('2099-01-03T18:00:00-06:00'),
+    auctionEnd:new Date('2099-01-05T18:00:00-06:00'),
+    dropNum:1,nextDropDate:null,
+    heroTagline:'Latinoamérica · Vintage Y2K',
+    heroDesc:'🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲',
+    endedText:'Estamos notificando a los ganadores.',
+    whatsapp:'50685019010',
+  };
+}
+
+function getDropState(){
+  const cfg=loadDropConfig();const now=new Date();
+  if(now<cfg.previewStart)return{state:'before',cfg};
+  if(now<cfg.auctionStart)return{state:'preview',cfg};
+  if(now<cfg.auctionEnd)return{state:'active',cfg};
+  return{state:'ended',cfg};
+}
+
+// ---- RENDER PAGE STATE ----
+function renderPage(){
+  const{state,cfg}=getDropState();
+  const hero=document.getElementById('heroContent');
+  const heroSide=document.getElementById('heroSide');
+  const ticker=document.getElementById('tickerTrack');
+  const banner=document.getElementById('auctionBanner');
+  const subtitle=document.getElementById('auctionSubtitle');
+  const nextDropStr=cfg.nextDropDate?new Date(cfg.nextDropDate).toLocaleString('es-CR',{weekday:'long',day:'numeric',month:'long'}):'próximamente';
+
+  if(state==='before'){
+    hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)}</div><h1 class="hero-title">ALGO<br><span class="outline">VIENE</span><span class="accent">PRONTO.</span></h1><p class="hero-sub">${esc(cfg.heroDesc)}</p><div class="hero-btns"><a class="btn btn-gold" href="https://www.instagram.com/zafa.cr/" target="_blank" rel="noopener noreferrer">Seguir en Instagram →</a></div>`;
+    heroSide.style.display='none';
+    ticker.textContent='★ PRÓXIMAMENTE ★ ZAFA ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ SEGUINOS EN @ZAFA.CR ★ PRÓXIMAMENTE ★ ZAFA ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ SEGUINOS EN @ZAFA.CR ★   ';
+    banner.innerHTML=`<div class="preview-banner"><div><div class="preview-label">⏳ PRÓXIMAMENTE</div><div class="live-title">El drop llega pronto</div><div class="live-sub">Seguinos en @zafa.cr para que te avisemos</div></div></div>`;
+    subtitle.textContent='Próximamente';
+  } else if(state==='preview'){
+    hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)} · Drop #${cfg.dropNum}</div><h1 class="hero-title">EXPLORÁ<br><span class="outline">ANTES</span><span class="accent">QUE TODOS.</span></h1><p class="hero-sub">${esc(cfg.heroDesc)}</p><div class="hero-btns"><a href="#auction" class="btn btn-gold">Ver piezas →</a></div>`;
+    heroSide.style.display='flex';
+    ticker.textContent=`★ PREVIEW ACTIVO ★ DROP #${cfg.dropNum} ★ SUBASTA ABRE VIERNES 6PM ★ REGISTRATE PARA PUJAR ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ PREVIEW ACTIVO ★ DROP #${cfg.dropNum} ★ SUBASTA ABRE VIERNES 6PM ★   `;
+    banner.innerHTML=`<div class="preview-banner"><div><div class="preview-label">👁 PREVIEW — La subasta aún no abre</div><div class="live-title">Explorá las piezas antes que todos</div><div class="live-sub">La subasta abre el viernes 6pm · Registrate para pujar</div></div><div class="countdown"><div class="cd-unit"><span class="cd-n" id="cdH">--</span><span class="cd-l">HRS</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdM">--</span><span class="cd-l">MIN</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdS">--</span><span class="cd-l">SEG</span></div></div></div>`;
+    subtitle.textContent='Preview activo · La subasta abre pronto';
+    startCountdown(cfg.auctionStart);
+  } else if(state==='active'){
+    hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)} · Drop #${cfg.dropNum} 🔥</div><h1 class="hero-title">SUBASTA<br><span class="outline">EN</span><span class="accent">VIVO.</span></h1><p class="hero-sub">${esc(cfg.heroDesc)}</p><div class="hero-btns"><a href="#auction" class="btn btn-gold">Ofertar ahora →</a></div>`;
+    heroSide.style.display='flex';
+    ticker.textContent=`★ SUBASTA EN VIVO ★ DROP #${cfg.dropNum} ★ 48HRS ★ OFERTAS EN TIEMPO REAL ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ SUBASTA EN VIVO ★ DROP #${cfg.dropNum} ★   `;
+    banner.innerHTML=`<div class="live-banner"><div><div class="live-label"><div class="live-dot"></div>SUBASTA EN VIVO</div><div class="live-title">Drop #${cfg.dropNum} · Cierra ${cfg.auctionEnd.toLocaleString('es-CR',{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div><div class="live-sub">Ganador recibe WhatsApp · 24hrs para pagar por SINPE</div></div><div class="countdown"><div class="cd-unit"><span class="cd-n" id="cdH">--</span><span class="cd-l">HRS</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdM">--</span><span class="cd-l">MIN</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdS">--</span><span class="cd-l">SEG</span></div></div></div>`;
+    subtitle.textContent='Subasta activa · Ofertas en tiempo real';
+    startCountdown(cfg.auctionEnd);
+  } else {
+    hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)}</div><h1 class="hero-title">GRACIAS<br><span class="outline">POR</span><span class="accent">PUJAR.</span></h1><p class="hero-sub">El Drop #${cfg.dropNum} terminó. ${esc(cfg.endedText)} El próximo drop llega el <strong style="color:var(--gold);">${esc(nextDropStr)}</strong>.</p><div class="hero-btns"><a class="btn btn-gold" href="https://www.instagram.com/zafa.cr/" target="_blank" rel="noopener noreferrer">Seguir en Instagram →</a></div>`;
+    heroSide.style.display='none';
+    ticker.textContent=`★ DROP #${cfg.dropNum} CERRADO ★ GRACIAS POR PUJAR ★ PRÓXIMO DROP: ${nextDropStr.toUpperCase()} ★ SEGUINOS EN @ZAFA.CR ★   `;
+    banner.innerHTML=`<div class="preview-banner" style="justify-content:center;text-align:center;flex-direction:column;gap:6px;"><div class="preview-label">✅ SUBASTA CERRADA</div><div class="live-title">Drop #${cfg.dropNum} finalizado · Notificando ganadores</div><div class="live-sub">Próximo drop: <strong style="color:var(--gold);">${esc(nextDropStr)}</strong></div></div>`;
+    subtitle.textContent=`Cerrada · Próximo: ${nextDropStr}`;
+  }
+}
+
+function startCountdown(target){
+  if(window._cdInterval)clearInterval(window._cdInterval);
+  window._cdInterval=setInterval(()=>{
+    const diff=Math.max(0,target-new Date());
+    const h=document.getElementById('cdH');const m=document.getElementById('cdM');const s=document.getElementById('cdS');
+    if(!h)return;
+    h.textContent=String(Math.floor(diff/3600000)).padStart(2,'0');
+    m.textContent=String(Math.floor((diff%3600000)/60000)).padStart(2,'0');
+    s.textContent=String(Math.floor((diff%60000)/1000)).padStart(2,'0');
+    if(diff===0)clearInterval(window._cdInterval);
+  },1000);
+}
+
+// ---- SHOP ----
+const emojis=['👕','🧥','👖','👗','🎽','🦺','👔','🧤','👘','🩱'];
+
+function renderShop(filter='all'){
+  let items=[];
+  try{const s=localStorage.getItem('zafa_shop');if(s)items=JSON.parse(s).filter(i=>i.status==='tienda');}catch(e){}
+  const filtered=filter==='all'?items:items.filter(i=>i.cat===filter);
+  const shopSec=document.getElementById('shop');
+  const navShop=document.getElementById('navShop');
+  const footerShop=document.getElementById('footerShop');
+  // Show shop section only if there are items in it
+  if(filtered.length>0||items.length>0){
+    shopSec.style.display='block';
+    if(navShop)navShop.style.display='block';
+    if(footerShop)footerShop.style.display='block';
+  } else {
+    shopSec.style.display='none';
+    if(navShop)navShop.style.display='none';
+    if(footerShop)footerShop.style.display='none';
+  }
+  document.getElementById('shopCount').textContent=filtered.length+' PIEZAS';
+  document.getElementById('shopGrid').innerHTML=filtered.map((item,i)=>{
+    const imgHtml=item.imageUrl?`<img src="${esc(item.imageUrl)}" alt="${esc(item.name)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">`:`<span style="font-size:52px;opacity:.4;">${item.emoji||emojis[i%emojis.length]}</span>`;
+    return`<div class="pcard" onclick="openBuyModal(${JSON.stringify(item.id)})">
+      <div class="pimg" style="position:relative;">
+        ${item.status==='last'?'<span class="pbadge pb-last">ÚLTIMO</span>':'<span class="pbadge pb-new">NUEVO</span>'}
+        ${imgHtml}
+      </div>
+      <div class="pcard-ov"><button class="btn btn-gold" style="font-size:10px;" onclick="event.stopPropagation();openBuyModal(${JSON.stringify(item.id)})">Comprar ahora</button></div>
+      <div class="pinfo">
+        <div class="pname">${esc(item.name)}</div>
+        <div class="pmeta">TALLA ${esc(item.size)} · EXCELENTE ESTADO</div>
+        <div class="pprice">${fmt(item.price)}</div>
+        <button class="pbuy" onclick="event.stopPropagation();openBuyModal(${JSON.stringify(item.id)})">COMPRAR → WHATSAPP</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterShop(cat,btn){
+  document.querySelectorAll('.filt').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderShop(cat);
+}
+
+// ---- AUCTION ----
+let bidData={};
+let currentAuctionPiece=null;
+let lastBidTime={};
+
+function fmt(n){return'₡'+Number(n).toLocaleString();}
+
+function renderAuction(){
+  let items=[];
+  try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s).filter(i=>i.status==='active');}catch(e){}
+  document.getElementById('auctionCount').textContent=items.length+' PIEZAS';
+  const{state}=getDropState();
+  const isActive=state==='active';
+  document.getElementById('auctionGrid').innerHTML=items.map((item,i)=>{
+    const d=bidData[item.id]||{top_bid:item.base_price,top_bidder:null,bid_count:0};
+    const imgHtml=item.imageUrl?`<img src="${esc(item.imageUrl)}" alt="${esc(item.name)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">`:`<span style="font-size:52px;opacity:.35;">${item.emoji||emojis[i%emojis.length]}</span>`;
+    const badge=isActive?`<span class="bid-count-badge" id="bc-${esc(item.id)}">${d.bid_count} OFERTAS</span>`:`<span class="preview-badge">PREVIEW</span>`;
+    const bidBtn=isActive?`<button class="bid-btn" onclick="event.stopPropagation();openBidModal(${JSON.stringify(item.id)})">OFERTAR AHORA →</button>`:`<button class="bid-btn" disabled>SUBASTA AÚN NO ABRE</button>`;
+    return`<div class="acard" onclick="openBidModal(${JSON.stringify(item.id)})">
+      <div class="pimg" style="background:#130f0c;position:relative;">
+        ${badge}${imgHtml}
+      </div>
+      <div class="ainfo">
+        <div class="aname">${esc(item.name)}</div>
+        <div class="ameta">${esc(item.cat)} · TALLA ${esc(item.size)}</div>
+        <div class="bid-row">
+          <div>
+            <div class="bid-lbl">${isActive&&d.bid_count>0?'OFERTA MÁS ALTA':'PRECIO BASE'}</div>
+            <div class="bid-amt" id="ba-${esc(item.id)}">${fmt(d.top_bid)}</div>
+          </div>
+          <div class="bid-right">${isActive&&d.top_bidder?esc(d.top_bidder):'—'}<br><span style="color:var(--rust);font-size:10px;">${isActive?'↑ activo':'⏳ pronto'}</span></div>
+        </div>
+        ${bidBtn}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- BIDS ----
+async function loadBids(){
+  let items=[];
+  try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s).filter(i=>i.status==='active');}catch(e){}
+  if(!db){items.forEach(item=>{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0};});renderAuction();return;}
+  try{
+    const{data,error}=await db.from('bids').select('piece_id,bidder_name,amount,bid_time');
+    if(error)throw error;
+    items.forEach(item=>{
+      const bids=data.filter(b=>b.piece_id===item.id);
+      if(bids.length>0){const top=bids.reduce((a,b)=>a.amount>b.amount?a:b);bidData[item.id]={top_bid:top.amount,top_bidder:top.bidder_name,bid_count:bids.length};}
+      else{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0};}
+    });
+    renderAuction();
+  }catch(e){items.forEach(item=>{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0};});renderAuction();}
+}
+
+function subscribeToLiveBids(){
+  if(!db)return;
+  try{
+    db.channel('bids-ch').on('postgres_changes',{event:'INSERT',schema:'public',table:'bids'},payload=>{
+      const bid=payload.new;
+      const cur=bidData[bid.piece_id]||{top_bid:0,bid_count:0};
+      if(bid.amount>cur.top_bid){
+        bidData[bid.piece_id]={top_bid:bid.amount,top_bidder:bid.bidder_name,bid_count:cur.bid_count+1};
+        const ba=document.getElementById('ba-'+bid.piece_id);
+        const bc=document.getElementById('bc-'+bid.piece_id);
+        if(ba){ba.textContent=fmt(bid.amount);ba.classList.add('updated');setTimeout(()=>ba.classList.remove('updated'),1200);}
+        if(bc)bc.textContent=bidData[bid.piece_id].bid_count+' OFERTAS';
+        showToast(`Nueva oferta: ${fmt(bid.amount)} por ${esc(bid.bidder_name)}`,'success');
+        if(currentAuctionPiece===bid.piece_id){document.getElementById('am-topbid').textContent=fmt(bid.amount);document.getElementById('am-topbidder').textContent='por '+esc(bid.bidder_name);}
+      }
+    }).subscribe();
+  }catch(e){console.warn('Realtime not available');}
+}
+
+// ---- SESSION ----
+let currentUser=null;
+function loadSession(){try{const s=localStorage.getItem('zafa_user');if(s)currentUser=JSON.parse(s);}catch(e){}updateNavUser();}
+function saveSession(u){currentUser=u;localStorage.setItem('zafa_user',JSON.stringify(u));}
+function logout(){currentUser=null;localStorage.removeItem('zafa_user');updateNavUser();showToast('Sesión cerrada','success');}
+function updateNavUser(){
+  const el=document.getElementById('navUser');if(!el)return;
+  if(currentUser){
+    el.innerHTML=`<div class="user-tag"><div class="user-dot"></div><span>${esc(currentUser.name.split(' ')[0])}</span> · <span style="cursor:pointer;color:var(--muted);" onclick="logout()">salir</span></div>`;
+  }else{
+    el.innerHTML=`<button class="nav-reg" onclick="showRegisterPrompt()">Registrarse</button>`;
+  }
+}
+
+// ---- REGISTER ----
+let pendingUser=null;
+let verificationToken=null;
+
+function showRegisterPrompt(returnToPiece){
+  currentAuctionPiece=returnToPiece||currentAuctionPiece||null;
+  document.getElementById('am-name').textContent='Registrate para pujar';
+  document.getElementById('am-meta').textContent='Solo necesitás tu nombre, WhatsApp y email';
+  document.getElementById('curTopBox').style.display='none';
+  document.getElementById('modalContent').innerHTML=renderRegStep1();
+  document.getElementById('bidModal').classList.add('open');
+}
+
+function renderRegStep1(){
+  return`<div class="reg-box">
+    <div class="reg-box-title">PASO 1 DE 2 — TUS DATOS</div>
+    <div class="field-row"><label class="field-label">TU NOMBRE</label><input class="field-input" id="regName" placeholder="ej: María García" maxlength="60"></div>
+    <div class="field-row"><label class="field-label">WHATSAPP (solo números)</label><input class="field-input" id="regPhone" placeholder="ej: 88001234" maxlength="20" type="tel"></div>
+    <div class="field-row"><label class="field-label">EMAIL</label><input class="field-input" id="regEmail" placeholder="ej: maria@gmail.com" maxlength="80" type="email"></div>
+    <div class="terms-row">
+      <input type="checkbox" class="terms-check" id="regTerms">
+      <label for="regTerms" class="terms-text">Leí y acepto los <a href="terminos.html" target="_blank" style="color:var(--gold);text-decoration:underline;">Términos y Condiciones</a>. Si gano tengo <strong style="color:var(--cream);">24 horas</strong> para pagar.</label>
+    </div>
+    <div class="bid-msg" id="regMsg"></div>
+    <button class="reg-submit" onclick="sendVerificationCode()">ENVIAR CÓDIGO DE VERIFICACIÓN →</button>
+  </div>`;
+}
+
+function renderRegStep2(email){
+  return`<div class="reg-box">
+    <div class="reg-box-title">PASO 2 DE 2 — VERIFICÁ TU EMAIL</div>
+    <div style="font-size:13px;color:var(--cream);margin-bottom:6px;">Te enviamos un código a:</div>
+    <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--gold);margin-bottom:16px;">${esc(email)}</div>
+    <div class="field-row">
+      <label class="field-label">CÓDIGO DE 6 DÍGITOS</label>
+      <input class="field-input" id="verifyCode" placeholder="ej: 483920" maxlength="6" type="number" style="font-size:24px;letter-spacing:8px;text-align:center;">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">⏳ El código expira en 10 minutos · Revisá spam si no llega</div>
+    <div class="bid-msg" id="verifyMsg"></div>
+    <button class="reg-submit" id="verifyBtn" onclick="verifyCode()">VERIFICAR Y CREAR CUENTA</button>
+    <button onclick="document.getElementById('modalContent').innerHTML=renderRegStep1()" style="width:100%;margin-top:8px;padding:10px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;border-radius:2px;">← VOLVER</button>
+  </div>`;
+}
+
+async function sendVerificationCode(){
+  const name=document.getElementById('regName').value.trim();
+  const phone=document.getElementById('regPhone').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const terms=document.getElementById('regTerms').checked;
+  const msg=document.getElementById('regMsg');
+  if(!name){msg.textContent='Poné tu nombre';msg.className='bid-msg err';return;}
+  if(!phone||phone.length<7){msg.textContent='Poné tu número de WhatsApp';msg.className='bid-msg err';return;}
+  if(!/^\d+$/.test(phone)){msg.textContent='Solo números en WhatsApp, sin guiones';msg.className='bid-msg err';return;}
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Poné un email válido';msg.className='bid-msg err';return;}
+  if(!terms){msg.textContent='Tenés que aceptar los términos';msg.className='bid-msg err';return;}
+  msg.textContent='Enviando código...';msg.className='bid-msg ok';
+  const btn=document.querySelector('.reg-submit');if(btn)btn.disabled=true;
+  pendingUser={name,phone,email};
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),15000);
+    const res=await fetch('/send-verification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email}),signal:controller.signal});
+    clearTimeout(timeout);
+    const data=await res.json();
+    if(res.status===429){msg.textContent=data.error;msg.className='bid-msg err';if(btn)btn.disabled=false;return;}
+    if(!res.ok||!data.success)throw new Error(data.error||'Error');
+    verificationToken=data.token;
+    document.getElementById('modalContent').innerHTML=renderRegStep2(email);
+  }catch(e){msg.textContent='Error de conexión con el servidor. Intentá de nuevo en unos segundos.';msg.className='bid-msg err';console.error('Verification error:',e);if(btn)btn.disabled=false;}
+}
+
+async function verifyCode(){
+  const input=document.getElementById('verifyCode').value.trim();
+  const msg=document.getElementById('verifyMsg');
+  const btn=document.getElementById('verifyBtn');
+  if(!input||input.length!==6){msg.textContent='Ingresá el código de 6 dígitos';msg.className='bid-msg err';return;}
+  if(!verificationToken||!pendingUser){msg.textContent='Error — volvé al paso anterior';msg.className='bid-msg err';return;}
+  if(btn)btn.disabled=true;msg.textContent='Verificando...';msg.className='bid-msg ok';
+  try{
+    const res=await fetch('/send-verification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',email:pendingUser.email,token:verificationToken,code:input})});
+    const data=await res.json();
+    if(!res.ok||!data.verified){msg.textContent=data.error||'Código incorrecto';msg.className='bid-msg err';if(btn)btn.disabled=false;return;}
+    const user={...pendingUser,verified:true,createdAt:new Date().toISOString()};
+    saveSession(user);verificationToken=null;pendingUser=null;
+    closeModal('bidModal');
+    showToast(`¡Bienvenida ${user.name.split(' ')[0]}! Ya podés pujar 🎉`,'success');
+    if(currentAuctionPiece)setTimeout(()=>openBidModal(currentAuctionPiece),400);
+  }catch(e){msg.textContent='Error de conexión. Intentá de nuevo.';msg.className='bid-msg err';if(btn)btn.disabled=false;}
+}
+
+// ---- BID MODAL ----
+function openBidModal(id){
+  currentAuctionPiece=id;
+  const{state}=getDropState();
+  let items=[];try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s);}catch(e){}
+  const item=items.find(i=>i.id===id);if(!item)return;
+  const d=bidData[id]||{top_bid:item.base_price,top_bidder:null};
+  document.getElementById('am-name').textContent=item.name;
+  document.getElementById('am-meta').textContent=`${item.cat} · TALLA ${item.size}`;
+  document.getElementById('am-topbid').textContent=fmt(d.top_bid);
+  document.getElementById('am-topbidder').textContent=d.top_bidder?'por '+d.top_bidder:'sé el primero en ofertar';
+  document.getElementById('curTopBox').style.display='block';
+  if(state==='preview'||state==='before'){
+    document.getElementById('modalContent').innerHTML=`<div style="padding:14px;background:rgba(90,82,72,.15);border:1px solid var(--border);border-radius:2px;text-align:center;">
+      <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;margin-bottom:8px;">⏳ SUBASTA AÚN NO ABRE</div>
+      <div style="font-size:13px;color:var(--cream);margin-bottom:12px;">Estás en modo preview. La subasta abre el viernes 6pm.</div>
+      ${!currentUser?`<button class="reg-submit" onclick="closeModal('bidModal');showRegisterPrompt()">Registrate para pujar cuando abra</button>`:'<div style="font-size:12px;color:var(--gold);font-family:Space Mono,monospace;">✓ Ya estás registrado — volvé cuando abra la subasta</div>'}
+    </div>`;
+  }else if(state==='ended'){
+    document.getElementById('modalContent').innerHTML=`<div style="text-align:center;padding:14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;">SUBASTA CERRADA</div>`;
+  }else{
+    if(!currentUser){showRegisterPrompt(id);return;}
+    document.getElementById('modalContent').innerHTML=`<div class="bid-form">
+      <label>OFERTANDO COMO</label>
+      <div style="font-size:13px;color:var(--gold);font-family:'Space Mono',monospace;margin-bottom:12px;padding:8px 10px;background:rgba(201,168,76,.06);border-radius:2px;display:flex;justify-content:space-between;align-items:center;">
+        <span>${esc(currentUser.name)} · ${esc(currentUser.phone)}</span>
+        <span style="font-size:9px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);padding:2px 7px;border-radius:999px;">✓ VERIFICADO</span>
+      </div>
+      <label>TU OFERTA (₡)</label>
+      <input type="number" id="bidAmount" placeholder="ej: ${d.top_bid+500}" min="${d.top_bid+1}" step="500">
+      <button class="bid-submit" id="bidSubmit" onclick="submitBid()">OFERTAR AHORA</button>
+      <div class="bid-msg" id="bidMsg"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;">Al pujar confirmás que tenés 24hrs para pagar si ganás.</div>
+    </div>`;
+  }
+  document.getElementById('bidModal').classList.add('open');
+}
+
+async function submitBid(){
+  if(!currentUser){showToast('Registrate primero','error');return;}
+  const{state}=getDropState();
+  if(state!=='active'){showToast('La subasta no está activa','error');return;}
+  const amount=parseInt(document.getElementById('bidAmount').value);
+  const msg=document.getElementById('bidMsg');
+  const btn=document.getElementById('bidSubmit');
+  if(!amount||amount<100){msg.textContent='Ingresá un monto válido';msg.className='bid-msg err';return;}
+  const rateKey=currentUser.phone+'_'+currentAuctionPiece;
+  if(Date.now()-(lastBidTime[rateKey]||0)<10000){msg.textContent='Esperá unos segundos antes de volver a ofertar';msg.className='bid-msg err';return;}
+  let items=[];try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s);}catch(e){}
+  const item=items.find(i=>i.id===currentAuctionPiece);
+  const cur=bidData[currentAuctionPiece]||{top_bid:item.base_price};
+  if(amount<=cur.top_bid){msg.textContent=`Tu oferta debe ser mayor a ${fmt(cur.top_bid)}`;msg.className='bid-msg err';return;}
+  if(amount>9999999){msg.textContent='Monto demasiado alto';msg.className='bid-msg err';return;}
+  btn.disabled=true;btn.textContent='ENVIANDO...';msg.textContent='';
+  if(!db){msg.textContent='Conectá Supabase para activar las ofertas.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
+  try{
+    const{error}=await db.from('bids').insert({piece_id:currentAuctionPiece,piece_name:item.name,bidder_name:currentUser.name,bidder_phone:currentUser.phone,bidder_email:currentUser.email,amount:amount,bid_time:new Date().toISOString(),created_at:new Date().toISOString()});
+    if(error)throw error;
+    lastBidTime[rateKey]=Date.now();
+    msg.textContent=`¡Oferta de ${fmt(amount)} registrada! Te avisamos si ganás.`;msg.className='bid-msg ok';
+    document.getElementById('bidAmount').value='';btn.textContent='¡OFERTA ENVIADA!';
+    setTimeout(()=>{btn.disabled=false;btn.textContent='OFERTAR AHORA';},3000);
+  }catch(e){msg.textContent='Error al enviar. Verificá tu conexión.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';}
+}
+
+// ---- BUY MODAL ----
+function openBuyModal(id){
+  let items=[];try{const s=localStorage.getItem('zafa_shop');if(s)items=JSON.parse(s);}catch(e){}
+  const item=items.find(i=>i.id===id);if(!item)return;
+  document.getElementById('bm-name').textContent=item.name;
+  document.getElementById('bm-meta').textContent=`TALLA ${item.size} · EXCELENTE ESTADO`;
+  document.getElementById('bm-price').textContent=fmt(item.price);
+  document.getElementById('bm-link').href=`https://wa.me/${getWA()}?text=${encodeURIComponent(`Hola ZAFA! 👋 Quiero comprar: ${item.name} (Talla ${item.size}) — ${fmt(item.price)}`)}`;
+  document.getElementById('buyModal').classList.add('open');
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} show`;
+  clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:0.05});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+setTimeout(()=>{document.querySelectorAll('.reveal').forEach(el=>{if(el.getBoundingClientRect().top<window.innerHeight)el.classList.add('visible');});},80);
+
+// ---- INIT ----
+loadSession();
+renderPage();
+renderShop();
+loadBids();
+subscribeToLiveBids();
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Términos y Condiciones — ZAFA</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black:#0d0d0d; --cream:#f0e8d8; --gold:#c9a84c; --rust:#c4522a;
+    --muted:#5a5248; --card:#161410; --border:#2a2520;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--black);color:var(--cream);font-family:'DM Sans',sans-serif;min-height:100vh;}
+  body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");pointer-events:none;z-index:999;opacity:.5;}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:16px 40px;background:rgba(13,13,13,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.2em;color:var(--cream);text-decoration:none;}
+  .logo em{color:var(--gold);font-style:normal;}
+  .nav-back{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--muted);text-decoration:none;transition:color .2s;}
+  .nav-back:hover{color:var(--cream);}
+
+  .hero{padding:120px 40px 60px;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+  .hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 40% 60% at 80% 50%,rgba(201,168,76,.05) 0%,transparent 70%);}
+  .hero-eyebrow{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:12px;}
+  .hero-eyebrow::before{content:'';width:36px;height:1px;background:var(--gold);}
+  h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,8vw,100px);line-height:.92;letter-spacing:.02em;margin-bottom:16px;}
+  h1 em{color:var(--gold);font-style:normal;}
+  .hero-sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em;}
+
+  .content{max-width:720px;margin:0 auto;padding:60px 40px 80px;}
+
+  .term{margin-bottom:48px;padding-bottom:48px;border-bottom:1px solid var(--border);}
+  .term:last-child{border-bottom:none;}
+
+  .term-num{font-family:'Bebas Neue',sans-serif;font-size:72px;color:rgba(201,168,76,.08);line-height:1;margin-bottom:-10px;}
+  .term-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--gold);margin-bottom:16px;}
+  .term-body{font-size:15px;color:var(--cream);line-height:1.8;}
+  .term-body strong{color:var(--gold);font-weight:500;}
+
+  .highlight{background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.15);border-left:3px solid var(--gold);padding:16px 20px;border-radius:0 2px 2px 0;margin-top:16px;}
+  .highlight-text{font-size:13px;color:var(--muted);line-height:1.7;}
+
+  .footer-nav{background:var(--card);border-top:1px solid var(--border);padding:28px 40px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+  .footer-logo{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.2em;color:var(--cream);}
+  .footer-logo em{color:var(--gold);font-style:normal;}
+  .footer-link{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-decoration:none;letter-spacing:.08em;transition:color .2s;}
+  .footer-link:hover{color:var(--gold);}
+  .footer-date{font-family:'Space Mono',monospace;font-size:10px;color:#3a3530;letter-spacing:.06em;}
+
+  .back-btn{display:inline-flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--muted);text-decoration:none;padding:10px 20px;border:1px solid var(--border);border-radius:2px;transition:all .2s;margin-bottom:48px;}
+  .back-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+  @media(max-width:640px){
+    nav{padding:14px 20px;}
+    .hero{padding:100px 20px 40px;}
+    .content{padding:40px 20px 60px;}
+    .footer-nav{padding:20px;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="zafa-live.html">ZAF<em>A</em></a>
+  <a class="nav-back" href="zafa-live.html">← Volver al sitio</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">Legal · ZAFA</div>
+  <h1>TÉRMINOS Y <em>CONDICIONES</em></h1>
+  <div class="hero-sub">Última actualización: Mayo 2025 · zafa.cr</div>
+</div>
+
+<div class="content">
+
+  <a class="back-btn" href="zafa-live.html">← Volver al sitio</a>
+
+  <div class="term">
+    <div class="term-num">01</div>
+    <div class="term-title">Subastas</div>
+    <div class="term-body">
+      Al ofertar en una subasta ZAFA, aceptás las condiciones de compra. Si tu oferta resulta ganadora, tenés <strong>24 horas</strong> para completar el pago. Si no realizás el pago en ese plazo, la pieza pasa automáticamente al siguiente ofertante y tu cuenta puede ser suspendida.
+    </div>
+    <div class="highlight">
+      <div class="highlight-text">Ofertar es un compromiso. Solo ofertá si tenés intención real de comprar — esto mantiene la subasta justa para todos.</div>
+    </div>
+  </div>
+
+  <div class="term">
+    <div class="term-num">02</div>
+    <div class="term-title">Pagos</div>
+    <div class="term-body">
+      Aceptamos los siguientes métodos de pago:<br><br>
+      <strong>SINPE Móvil</strong> — pago inmediato, confirmación al instante.<br><br>
+      <strong>Transferencia bancaria</strong> — coordinar número de cuenta por WhatsApp.<br><br>
+      <strong>Efectivo</strong> — únicamente en la GAM al momento de la entrega. Los pagos en efectivo requieren un <strong>adelanto previo</strong> de un porcentaje del valor total, el cual será indicado al momento de la compra.
+    </div>
+    <div class="highlight">
+      <div class="highlight-text">El pago confirma tu pedido. Sin pago confirmado, la pieza sigue disponible para otros compradores.</div>
+    </div>
+  </div>
+
+  <div class="term">
+    <div class="term-num">03</div>
+    <div class="term-title">Envíos</div>
+    <div class="term-body">
+      Realizamos envíos a todo Costa Rica y al exterior a través de <strong>Correos de Costa Rica</strong>.<br><br>
+      El costo de envío varía según la ubicación y se calcula con base en las tarifas oficiales de Correos de Costa Rica al momento de la compra:<br><br>
+      <strong>GAM</strong> — envío estándar coordinado al momento de la compra.<br><br>
+      <strong>Fuera de la GAM</strong> — costo adicional según tarifas de Correos de Costa Rica.<br><br>
+      <strong>Internacional</strong> — disponible bajo consulta, con costo según destino y tarifas de Correos de Costa Rica.
+    </div>
+    <div class="highlight">
+      <div class="highlight-text">Los tiempos de entrega dependen del servicio postal. Siempre te compartimos el número de seguimiento una vez despachado tu pedido.</div>
+    </div>
+  </div>
+
+  <div class="term">
+    <div class="term-num">04</div>
+    <div class="term-title">Prendas</div>
+    <div class="term-body">
+      Cada pieza ZAFA es seleccionada a mano con obsesión por el detalle — buscamos piezas con carácter, historia y ese algo especial que la ropa nueva nunca va a tener. Revisamos cada prenda individualmente y documentamos su estado con fotos reales antes de ponerla a la venta.<br><br>
+      Por la naturaleza única de la ropa vintage y de segunda mano, <strong>no aceptamos devoluciones</strong> por desgaste natural, variaciones de color propias del tiempo, o características inherentes al estilo de la pieza. Lo que ves es lo que recibís — y eso es exactamente lo que hace especial a ZAFA.
+    </div>
+    <div class="highlight">
+      <div class="highlight-text">Si una pieza llega en condiciones significativamente distintas a las documentadas, nos escribís y lo resolvemos. La honestidad va en los dos sentidos.</div>
+    </div>
+  </div>
+
+  <div class="term">
+    <div class="term-num">05</div>
+    <div class="term-title">Privacidad</div>
+    <div class="term-body">
+      Tus datos son como nuestras prendas — los tratamos con cuidado y no los dejamos en manos de cualquiera. Solo usamos tu nombre, WhatsApp y email para lo que importa: avisarte si ganás y coordinar tu pedido. Nada más.
+    </div>
+  </div>
+
+  <a class="back-btn" href="zafa-live.html">← Volver al sitio</a>
+
+</div>
+
+<div class="footer-nav">
+  <div class="footer-logo">ZAF<em>A</em></div>
+  <div style="display:flex;gap:20px;">
+    <a class="footer-link" href="zafa-live.html">Sitio</a>
+    <a class="footer-link" href="https://wa.me/50685019010" target="_blank">WhatsApp</a>
+    <a class="footer-link" href="https://instagram.com/zafa.cr" target="_blank">Instagram</a>
+  </div>
+  <div class="footer-date">© 2025 ZAFA · CR · Latinoamérica</div>
+</div>
+
+</body>
+</html>

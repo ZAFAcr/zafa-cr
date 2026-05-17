@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZAFA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --black: #0d0d0d; --cream: #f0e8d8; --gold: #c9a84c; --rust: #c4522a;
+    --muted: #5a5248; --card: #161410; --border: #2a2520; --green: #25D366;
+    --blue: #3b82f6; --red: #ef4444; --success: #22c55e;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--black); color:var(--cream); font-family:'DM Sans',sans-serif; min-height:100vh; }
+
+  /* LOGIN */
+  .login-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .login-box { background:var(--card); border:1px solid var(--border); padding:40px; max-width:360px; width:100%; }
+  .login-logo { font-family:'Space Mono',monospace; font-size:22px; letter-spacing:.2em; color:var(--gold); margin-bottom:6px; }
+  .login-sub { font-size:12px; color:var(--muted); margin-bottom:28px; font-family:'Space Mono',monospace; letter-spacing:.08em; }
+  .login-label { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.1em; color:var(--muted); display:block; margin-bottom:6px; }
+  .login-input { width:100%; padding:11px 14px; background:var(--black); border:1px solid var(--border); color:var(--cream); font-size:14px; border-radius:2px; outline:none; margin-bottom:14px; transition:border-color .2s; }
+  .login-input:focus { border-color:var(--gold); }
+  .login-btn { width:100%; padding:13px; background:var(--gold); color:var(--black); border:none; font-family:'Space Mono',monospace; font-size:12px; letter-spacing:.1em; font-weight:700; cursor:pointer; border-radius:2px; transition:background .2s; }
+  .login-btn:hover { background:var(--cream); }
+  .login-err { font-size:12px; color:var(--rust); margin-top:10px; font-family:'Space Mono',monospace; min-height:18px; }
+
+  /* ADMIN LAYOUT */
+  .admin { display:none; }
+  .admin.visible { display:block; }
+  .topbar { background:var(--card); border-bottom:1px solid var(--border); padding:14px 32px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
+  .topbar-logo { font-family:'Space Mono',monospace; font-size:16px; letter-spacing:.2em; color:var(--gold); }
+  .topbar-right { display:flex; gap:12px; align-items:center; }
+  .topbar-badge { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.1em; background:rgba(201,168,76,.12); color:var(--gold); padding:4px 10px; border-radius:999px; border:1px solid rgba(201,168,76,.3); }
+  .logout-btn { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.1em; padding:6px 14px; background:none; border:1px solid var(--border); color:var(--muted); cursor:pointer; border-radius:2px; transition:all .2s; }
+  .logout-btn:hover { border-color:var(--rust); color:var(--rust); }
+  .main { padding:32px; max-width:1400px; margin:0 auto; }
+
+  /* TABS */
+  .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:28px; }
+  .tab { font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.1em; padding:10px 20px; background:none; border:none; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+  .tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+
+  /* STATS */
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+  .stat { background:var(--card); border:1px solid var(--border); padding:16px 20px; border-radius:2px; }
+  .stat-val { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; color:var(--cream); line-height:1; margin-bottom:4px; }
+  .stat-label { font-size:12px; color:var(--muted); }
+
+  /* PANEL */
+  .panel { display:none; }
+  .panel.active { display:block; }
+
+  /* ADD FORM */
+  .add-form { background:var(--card); border:1px solid var(--border); padding:24px; margin-bottom:24px; }
+  .add-form-title { font-family:'Space Mono',monospace; font-size:12px; letter-spacing:.1em; color:var(--gold); margin-bottom:18px; }
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:14px; }
+  .form-group { display:flex; flex-direction:column; gap:5px; }
+  .form-label { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.08em; color:var(--muted); }
+  .form-input { padding:9px 12px; background:var(--black); border:1px solid var(--border); color:var(--cream); font-size:13px; border-radius:2px; outline:none; transition:border-color .2s; }
+  .form-input:focus { border-color:var(--gold); }
+  .form-select { padding:9px 12px; background:var(--black); border:1px solid var(--border); color:var(--cream); font-size:13px; border-radius:2px; outline:none; cursor:pointer; }
+  .add-btn { padding:10px 24px; background:var(--gold); color:var(--black); border:none; font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.1em; font-weight:700; cursor:pointer; border-radius:2px; transition:background .2s; }
+  .add-btn:hover { background:var(--cream); }
+  .add-btn-rust { background:var(--rust); color:var(--cream); }
+  .add-btn-rust:hover { background:#d4632f; }
+
+  /* ITEMS TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.08em; color:var(--muted); text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td { font-size:13px; color:var(--cream); padding:10px 12px; border-bottom:1px solid rgba(42,37,32,.6); vertical-align:middle; }
+  tr:hover td { background:rgba(22,20,16,.8); }
+  .status-badge { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.08em; padding:3px 8px; border-radius:999px; font-weight:700; }
+  .s-available { background:rgba(34,197,94,.12); color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+  .s-sold { background:rgba(196,82,42,.12); color:var(--rust); border:1px solid rgba(196,82,42,.3); }
+  .s-reserved { background:rgba(201,168,76,.12); color:var(--gold); border:1px solid rgba(201,168,76,.3); }
+  .s-active { background:rgba(59,130,246,.12); color:var(--blue); border:1px solid rgba(59,130,246,.3); }
+  .s-closed { background:rgba(90,82,72,.2); color:var(--muted); border:1px solid var(--border); }
+  .action-btns { display:flex; gap:6px; }
+  .act-btn { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.06em; padding:4px 10px; border-radius:2px; cursor:pointer; border:none; transition:all .2s; white-space:nowrap; }
+  .act-sell { background:rgba(196,82,42,.15); color:var(--rust); border:1px solid rgba(196,82,42,.3); }
+  .act-sell:hover { background:var(--rust); color:var(--cream); }
+  .act-restore { background:rgba(34,197,94,.1); color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+  .act-restore:hover { background:#22c55e; color:var(--black); }
+  .act-delete { background:rgba(239,68,68,.1); color:#ef4444; border:1px solid rgba(239,68,68,.3); }
+  .act-delete:hover { background:#ef4444; color:#fff; }
+  .act-reserve { background:rgba(201,168,76,.1); color:var(--gold); border:1px solid rgba(201,168,76,.3); }
+  .act-reserve:hover { background:var(--gold); color:var(--black); }
+  .act-close { background:rgba(90,82,72,.2); color:var(--muted); border:1px solid var(--border); }
+  .act-close:hover { background:var(--muted); color:var(--cream); }
+
+  /* BIDS TABLE */
+  .winner-row td { background:rgba(201,168,76,.05); }
+  .bid-top { font-weight:500; color:var(--gold); }
+
+  /* SEARCH/FILTER BAR */
+  .toolbar { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+  .search-input { padding:8px 12px; background:var(--card); border:1px solid var(--border); color:var(--cream); font-size:13px; border-radius:2px; outline:none; width:220px; }
+  .search-input:focus { border-color:var(--gold); }
+  .filter-select { padding:8px 12px; background:var(--card); border:1px solid var(--border); color:var(--cream); font-size:12px; border-radius:2px; cursor:pointer; font-family:'Space Mono',monospace; }
+  .toolbar-count { font-family:'Space Mono',monospace; font-size:11px; color:var(--muted); margin-left:auto; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:24px; right:24px; z-index:600; background:var(--card); border:1px solid var(--border); border-radius:4px; padding:12px 18px; color:var(--cream); transform:translateY(80px); opacity:0; transition:all .3s; font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.06em; max-width:300px; }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.ok { border-color:var(--gold); }
+  .toast.err { border-color:var(--rust); }
+
+  /* EMPTY STATE */
+  .empty { text-align:center; padding:48px; font-size:13px; color:var(--muted); font-family:'Space Mono',monospace; }
+
+  /* IMAGE UPLOAD */
+  .img-upload-area {
+    border:1.5px dashed var(--border); border-radius:2px; padding:16px;
+    text-align:center; cursor:pointer; transition:border-color .2s;
+    background:var(--black); position:relative;
+  }
+  .img-upload-area:hover { border-color:var(--gold); }
+  .img-upload-area input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .img-upload-label { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.08em; color:var(--muted); pointer-events:none; }
+  .img-preview { width:60px; height:60px; object-fit:cover; border-radius:2px; border:1px solid var(--border); }
+  .img-preview-wrap { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .img-uploading { font-family:'Space Mono',monospace; font-size:10px; color:var(--gold); letter-spacing:.08em; }
+  .thumb { width:48px; height:48px; object-fit:cover; border-radius:2px; border:1px solid var(--border); }
+
+  @media(max-width:640px) {
+    .main { padding:16px; }
+    .stats { grid-template-columns:repeat(2,1fr); }
+    .topbar { padding:12px 16px; }
+    .form-grid { grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">ZAFA</div>
+    <div class="login-sub">ADMIN · SOLO PARA STAFF</div>
+    <label class="login-label">CONTRASEÑA</label>
+    <input class="login-input" type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    <button class="login-btn" onclick="login()">ENTRAR</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin" id="adminPanel">
+  <div class="topbar">
+    <div class="topbar-logo">ZAFA ADMIN</div>
+    <div class="topbar-right">
+      <div class="topbar-badge" id="topbarStats">Cargando...</div>
+      <button class="logout-btn" onclick="logout()">SALIR</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- STATS -->
+    <div class="stats" id="statsRow">
+      <div class="stat"><div class="stat-val" id="st-available">—</div><div class="stat-label">Disponibles</div></div>
+      <div class="stat"><div class="stat-val" id="st-sold">—</div><div class="stat-label">Vendidas</div></div>
+      <div class="stat"><div class="stat-val" id="st-bids">—</div><div class="stat-label">Ofertas totales</div></div>
+      <div class="stat"><div class="stat-val" id="st-revenue">—</div><div class="stat-label">Revenue subasta</div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('shop')">TIENDA</button>
+      <button class="tab" onclick="switchTab('auction')">SUBASTA</button>
+      <button class="tab" onclick="switchTab('bids')">OFERTAS</button>
+      <button class="tab" onclick="switchTab('users')">👥 USUARIOS</button>
+      <button class="tab" onclick="switchTab('drop')">⚙ DROP CONFIG</button>
+    </div>
+
+    <!-- SHOP PANEL -->
+    <div class="panel active" id="panel-shop">
+      <!-- Add piece form -->
+      <div class="add-form">
+        <div class="add-form-title">+ AGREGAR PIEZA A LA TIENDA</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">NOMBRE</label><input class="form-input" id="s-name" placeholder="ej: Hoodie Champion"></div>
+          <div class="form-group"><label class="form-label">CATEGORÍA</label>
+            <select class="form-select" id="s-cat">
+              <option value="camiseta">Camiseta</option>
+              <option value="hoodie">Hoodie</option>
+              <option value="jeans">Jeans</option>
+              <option value="jacket">Jacket</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">TALLA</label><input class="form-input" id="s-size" placeholder="ej: M, L, 28"></div>
+          <div class="form-group"><label class="form-label">PRECIO (₡)</label><input class="form-input" type="number" id="s-price" placeholder="ej: 10000"></div>
+          <div class="form-group"><label class="form-label">EMOJI (opcional)</label><input class="form-input" id="s-emoji" placeholder="ej: 👕" maxlength="4"></div>
+          <div class="form-group"><label class="form-label">ESTADO</label>
+            <select class="form-select" id="s-status">
+              <option value="tienda">En tienda</option>
+              <option value="last">Último</option>
+              <option value="sold">Vendido</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">FOTO DE LA PIEZA</label>
+          <div class="img-upload-area" id="s-drop">
+            <input type="file" accept="image/*" id="s-img" onchange="previewImg('s-img','s-preview')">
+            <div class="img-upload-label">📷 Tocá para subir una foto (JPG, PNG)</div>
+          </div>
+          <div class="img-preview-wrap" id="s-preview" style="display:none;">
+            <img class="img-preview" id="s-preview-img" src="">
+            <div>
+              <div style="font-size:12px;color:var(--cream);margin-bottom:3px;" id="s-preview-name"></div>
+              <button onclick="clearImg('s-img','s-preview')" style="font-size:10px;background:none;border:none;color:var(--rust);cursor:pointer;font-family:'Space Mono',monospace;">✕ quitar foto</button>
+            </div>
+          </div>
+        </div>
+        <button class="add-btn" onclick="addShopItem()">AGREGAR PIEZA</button>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="toolbar">
+        <input class="search-input" placeholder="Buscar pieza..." id="shopSearch" oninput="renderShopTable()">
+        <select class="filter-select" id="shopFilter" onchange="renderShopTable()">
+          <option value="all">Todas</option>
+          <option value="tienda">En tienda</option>
+          <option value="sold">Vendidas</option>
+          <option value="last">Último</option>
+        </select>
+        <div class="toolbar-count" id="shopCount">— piezas</div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Nombre</th><th>Cat.</th><th>Talla</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="shopTableBody"></tbody>
+        </table>
+        <div class="empty" id="shopEmpty" style="display:none">No hay piezas. Agregá una arriba.</div>
+      </div>
+    </div>
+
+    <!-- AUCTION PANEL -->
+    <div class="panel" id="panel-auction">
+      <div class="add-form">
+        <div class="add-form-title">+ AGREGAR PIEZA A LA SUBASTA</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">NOMBRE</label><input class="form-input" id="a-name" placeholder="ej: Bomber Y2K"></div>
+          <div class="form-group"><label class="form-label">CATEGORÍA</label>
+            <select class="form-select" id="a-cat">
+              <option value="Jacket">Jacket</option>
+              <option value="Hoodie">Hoodie</option>
+              <option value="Jeans">Jeans</option>
+              <option value="Camiseta">Camiseta</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">TALLA</label><input class="form-input" id="a-size" placeholder="ej: M"></div>
+          <div class="form-group"><label class="form-label">PRECIO BASE (₡)</label><input class="form-input" type="number" id="a-price" placeholder="ej: 6000"></div>
+          <div class="form-group"><label class="form-label">EMOJI (opcional)</label><input class="form-input" id="a-emoji" placeholder="ej: 🧥" maxlength="4"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">FOTO DE LA PIEZA</label>
+          <div class="img-upload-area" id="a-drop">
+            <input type="file" accept="image/*" id="a-img" onchange="previewImg('a-img','a-preview')">
+            <div class="img-upload-label">📷 Tocá para subir una foto (JPG, PNG)</div>
+          </div>
+          <div class="img-preview-wrap" id="a-preview" style="display:none;">
+            <img class="img-preview" id="a-preview-img" src="">
+            <div>
+              <div style="font-size:12px;color:var(--cream);margin-bottom:3px;" id="a-preview-name"></div>
+              <button onclick="clearImg('a-img','a-preview')" style="font-size:10px;background:none;border:none;color:var(--rust);cursor:pointer;font-family:'Space Mono',monospace;">✕ quitar foto</button>
+            </div>
+          </div>
+        </div>
+        <button class="add-btn add-btn-rust" onclick="addAuctionItem()">AGREGAR A SUBASTA</button>
+      </div>
+
+      <div class="toolbar">
+        <input class="search-input" placeholder="Buscar pieza..." id="auctionSearch" oninput="renderAuctionTable()">
+        <select class="filter-select" id="auctionFilter" onchange="renderAuctionTable()">
+          <option value="all">Todas</option>
+          <option value="active">Activas</option>
+          <option value="closed">Cerradas</option>
+          <option value="sold">Vendidas</option>
+        </select>
+        <div class="toolbar-count" id="auctionCount">— piezas</div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Nombre</th><th>Base</th><th>Top 3 Ofertantes</th><th>Ofertas</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="auctionTableBody"></tbody>
+        </table>
+        <div class="empty" id="auctionEmpty" style="display:none">No hay piezas en subasta.</div>
+      </div>
+    </div>
+
+    <!-- BIDS PANEL -->
+    <div class="panel" id="panel-bids">
+      <div class="toolbar">
+        <input class="search-input" placeholder="Buscar por nombre, pieza o teléfono..." id="bidsSearch" oninput="renderBidsTable()">
+        <select class="filter-select" id="bidsFilter" onchange="renderBidsTable()">
+          <option value="all">Todas las ofertas</option>
+          <option value="top">Solo las ganadoras</option>
+        </select>
+        <button class="add-btn" style="padding:8px 16px;font-size:10px;" onclick="loadBids()">↻ ACTUALIZAR</button>
+        <div class="toolbar-count" id="bidsCount">— ofertas</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Pieza</th><th>Nombre</th><th>WhatsApp</th><th>Oferta</th><th>¿Ganadora?</th><th>Hora</th><th>Acción</th></tr></thead>
+          <tbody id="bidsTableBody"></tbody>
+        </table>
+        <div class="empty" id="bidsEmpty" style="display:none">No hay ofertas todavía.</div>
+      </div>
+    </div>
+
+    <!-- DROP CONFIG PANEL -->
+    <div class="panel" id="panel-drop">
+      <div class="add-form">
+        <div class="add-form-title">⚙ CONFIGURACIÓN DEL DROP</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+          Configurá las fechas del drop acá. Los cambios se guardan automáticamente y el sitio los aplica de inmediato. Zona horaria: Costa Rica (UTC-6).
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <div class="form-group">
+            <label class="form-label">ESTADO ACTUAL</label>
+            <div id="cfg-state-badge" style="padding:9px 12px;background:var(--black);border:1px solid var(--border);border-radius:2px;font-family:'Space Mono',monospace;font-size:11px;"></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+          <div class="form-group">
+            <label class="form-label">📅 INICIO PREVIEW</label>
+            <input class="form-input" type="datetime-local" id="cfg-preview-start">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Las piezas se muestran pero no se puede pujar</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🔥 INICIO SUBASTA</label>
+            <input class="form-input" type="datetime-local" id="cfg-auction-start">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Las pujas abren en vivo</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🔒 CIERRE SUBASTA</label>
+            <input class="form-input" type="datetime-local" id="cfg-auction-end">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Las pujas se cierran</div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:20px;">
+          <label class="form-label">📣 FECHA DEL PRÓXIMO DROP (se muestra cuando este cierra)</label>
+          <input class="form-input" type="datetime-local" id="cfg-next-drop" style="max-width:300px;">
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Opcional — aparece en el hero y el ticker cuando la subasta termina</div>
+        </div>
+
+        <div style="background:var(--black);border:1px solid var(--border);border-radius:2px;padding:16px;margin-bottom:20px;">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--muted);margin-bottom:12px;">TIMELINE DEL DROP</div>
+          <div id="cfg-timeline"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="add-btn" onclick="saveDropConfig()">GUARDAR CONFIGURACIÓN</button>
+          <button class="add-btn" style="background:none;border:1px solid var(--border);color:var(--muted);" onclick="loadDropConfig()">↻ RECARGAR</button>
+        </div>
+
+
+        <div style="margin-top:20px;background:var(--black);border:1px solid var(--border);border-radius:2px;padding:16px;">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--muted);margin-bottom:16px;">TEXTOS DEL SITIO</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div class="form-group">
+              <label class="form-label">NÚMERO DE DROP</label>
+              <input class="form-input" type="number" id="cfg-drop-num" value="1" min="1">
+              <div style="font-size:11px;color:var(--muted);margin-top:4px;">Aparece en el hero y el ticker</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">TAGLINE</label>
+              <input class="form-input" id="cfg-tagline" placeholder="ej: Latinoamérica · Vintage Y2K">
+              <div style="font-size:11px;color:var(--muted);margin-top:4px;">Aparece junto al logo en el hero</div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">DESCRIPCIÓN DEL HERO</label>
+            <textarea class="form-input" id="cfg-hero-desc" rows="4" placeholder="ej: 🗲 ZAFA deriva del verbo zafar..." style="resize:vertical;line-height:1.6;font-family:'DM Sans',sans-serif;font-size:13px;"></textarea>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">El párrafo que aparece en la pantalla principal</div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">TEXTO CUANDO LA SUBASTA TERMINA</label>
+            <input class="form-input" id="cfg-ended-text" placeholder="ej: Estamos notificando a los ganadores">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Aparece en el hero cuando el drop cierra</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">NÚMERO WHATSAPP</label>
+            <input class="form-input" id="cfg-whatsapp" placeholder="ej: 50685019010" maxlength="20">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Número que aparece en los botones de compra</div>
+          </div>
+        </div>
+
+        <div class="bid-msg" id="cfgMsg" style="margin-top:10px;"></div>
+      </div>
+
+    </div>
+
+    <!-- USERS PANEL -->
+    <div class="panel" id="panel-users">
+      <div class="add-form" style="margin-top:0;">
+        <div class="add-form-title">👥 USUARIOS REGISTRADOS</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Personas que se registraron para pujar. La columna <strong style="color:var(--cream);">Ofertas</strong> muestra cuántas veces ha pujado en total — no cuántas ganó.</div>
+        <div class="toolbar" style="margin-bottom:12px;">
+          <input class="search-input" placeholder="Buscar por nombre o teléfono..." id="usersSearch" oninput="renderUsersTable()">
+          <button class="add-btn" style="padding:8px 16px;font-size:10px;" onclick="loadAll()">↻ ACTUALIZAR</button>
+          <div class="toolbar-count" id="usersCount">— usuarios</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nombre</th><th>WhatsApp</th><th>Primer puja</th><th style="text-align:center;">Ofertas</th><th style="text-align:center;">Ganadas</th></tr></thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+          <div class="empty" id="usersEmpty" style="display:none">No hay usuarios registrados todavía.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+const SUPABASE_URL = 'https://zbicxqnzlddmcbvqwyws.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiaWN4cW56bGRkbWNidnF3eXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMDUyMjAsImV4cCI6MjA5Mjc4MTIyMH0.ZG9g41dcNpUuT0ufYlvMRZHo1mDlL0G45Xfr-8WScwY';
+const ADMIN_PASSWORD = 'zafa2025'; // CHANGE THIS!
+// ============================================================
+
+let db = null;
+let shopItems = [];
+let auctionItems = [];
+let allBids = [];
+let bidSummary = {}; // pieceId -> {top3: [{amount, name, phone}], count}
+
+function fmt(n) { return '₡' + Number(n).toLocaleString(); }
+function fmtDate(d) { if(!d) return '—'; try { return new Date(d).toLocaleString('es-CR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return '—'; } }
+
+// ---- AUTH ----
+// Session timeout — 2 hours
+const SESSION_TIMEOUT = 2 * 60 * 60 * 1000;
+let sessionTimer = null;
+
+// Brute force protection
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000;
+let loginAttempts = 0;
+let lockoutUntil = 0;
+function resetSessionTimer() {
+  clearTimeout(sessionTimer);
+  sessionTimer = setTimeout(() => {
+    logout();
+    document.getElementById('loginErr').textContent = 'Sesión expirada por inactividad.';
+  }, SESSION_TIMEOUT);
+}
+['click','keydown','mousemove'].forEach(e => document.addEventListener(e, () => { if(sessionTimer) resetSessionTimer(); }, {passive:true}));
+
+function login() {
+  const now = Date.now();
+  if (now < lockoutUntil) {
+    const mins = Math.ceil((lockoutUntil - now) / 60000);
+    document.getElementById('loginErr').textContent = `Demasiados intentos. Esperá ${mins} minuto${mins > 1 ? 's' : ''}.`;
+    return;
+  }
+  const pass = document.getElementById('loginPass').value;
+  if (pass === ADMIN_PASSWORD) {
+    loginAttempts = 0;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').classList.add('visible');
+    resetSessionTimer();
+    initDB();
+  } else {
+    loginAttempts++;
+    document.getElementById('loginPass').value = '';
+    if (loginAttempts >= MAX_ATTEMPTS) {
+      lockoutUntil = Date.now() + LOCKOUT_MS;
+      loginAttempts = 0;
+      document.getElementById('loginErr').textContent = 'Demasiados intentos. Bloqueado por 5 minutos.';
+    } else {
+      const left = MAX_ATTEMPTS - loginAttempts;
+      document.getElementById('loginErr').textContent = `Contraseña incorrecta. ${left} intento${left > 1 ? 's' : ''} restante${left > 1 ? 's' : ''}.`;
+    }
+  }
+}
+
+function logout() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminPanel').classList.remove('visible');
+  document.getElementById('loginPass').value = '';
+}
+
+// ---- DB INIT ----
+function initDB() {
+  try {
+    const { createClient } = supabase;
+    db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch(e) { showToast('Error conectando Supabase','err'); }
+  loadAll();
+}
+
+async function loadAll() {
+  await Promise.all([loadShopItems(), loadAuctionItems(), loadBids()]);
+  updateStats();
+}
+
+// ---- IMAGE HANDLING ----
+function previewImg(inputId, previewId) {
+  const file = document.getElementById(inputId).files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById(previewId+'-img').src = e.target.result;
+    document.getElementById(previewId+'-name').textContent = file.name;
+    document.getElementById(previewId).style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImg(inputId, previewId) {
+  document.getElementById(inputId).value = '';
+  document.getElementById(previewId).style.display = 'none';
+  document.getElementById(previewId+'-img').src = '';
+}
+
+async function uploadImage(inputId, folder) {
+  const file = document.getElementById(inputId).files[0];
+  if (!file) return null;
+  if (!db) {
+    // No Supabase — convert to base64 and store locally (works but limited to small images)
+    return new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = e => res(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+  try {
+    const ext = file.name.split('.').pop();
+    const path = `${folder}/${Date.now()}.${ext}`;
+    const { error } = await db.storage.from('zafa-images').upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data } = db.storage.from('zafa-images').getPublicUrl(path);
+    return data.publicUrl;
+  } catch(e) {
+    console.warn('Image upload failed, using local preview', e);
+    return new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = e2 => res(e2.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+// ---- SHOP ITEMS ----
+function loadShopItems() {
+  const saved = localStorage.getItem('zafa_shop');
+  if (!saved) {
+    shopItems = getDefaultShopItems();
+    showToast('No hay piezas guardadas — estás viendo las piezas por defecto. Agregá las reales desde aquí.', 'ok');
+  } else {
+    shopItems = JSON.parse(saved);
+  }
+  renderShopTable();
+}
+
+function saveShopItems() {
+  localStorage.setItem('zafa_shop', JSON.stringify(shopItems));
+  updateStats();
+}
+
+async function addShopItem() {
+  const name = document.getElementById('s-name').value.trim().substring(0, 80);
+  const cat = document.getElementById('s-cat').value;
+  const size = document.getElementById('s-size').value.trim().substring(0, 10);
+  const price = parseInt(document.getElementById('s-price').value);
+  const emoji = document.getElementById('s-emoji').value.trim().substring(0, 4) || '👕';
+  const status = document.getElementById('s-status').value;
+  if (!name || !size || !price) { showToast('Completá nombre, talla y precio','err'); return; }
+  if (price < 100 || price > 9999999) { showToast('Precio inválido','err'); return; }
+  if (!['camiseta','hoodie','jeans','jacket','otro'].includes(cat)) { showToast('Categoría inválida','err'); return; }
+  if (!['tienda','last','sold','reserved'].includes(status)) { showToast('Estado inválido','err'); return; }
+  showToast('Subiendo imagen...','ok');
+  const imageUrl = await uploadImage('s-img', 'shop');
+  const id = 's' + Date.now();
+  shopItems.push({id, name, cat, size, price, emoji, status, imageUrl});
+  saveShopItems();
+  renderShopTable();
+  document.getElementById('s-name').value='';
+  document.getElementById('s-size').value='';
+  document.getElementById('s-price').value='';
+  document.getElementById('s-emoji').value='';
+  clearImg('s-img','s-preview');
+  showToast(`${esc(name)} agregada ✓`,'ok');
+}
+
+function updateShopStatus(id, status) {
+  const item = shopItems.find(i=>i.id===id);
+  if (!item) return;
+  item.status = status;
+  saveShopItems();
+  renderShopTable();
+  showToast(`${esc(item.name)} → ${status==='sold'?'Vendida':status==='tienda'||status==='available'?'En tienda':'Reservada'}`,'ok');
+}
+
+function deleteShopItem(id) {
+  const item = shopItems.find(i=>i.id===id);
+  if (!confirm(`¿Eliminar "${item?.name}"?`)) return;
+  shopItems = shopItems.filter(i=>i.id!==id);
+  saveShopItems();
+  renderShopTable();
+  showToast('Pieza eliminada','ok');
+}
+
+function renderShopTable() {
+  const q = document.getElementById('shopSearch')?.value.toLowerCase() || '';
+  const f = document.getElementById('shopFilter')?.value || 'all';
+  let items = shopItems.filter(i => {
+    const matchQ = i.name.toLowerCase().includes(q) || i.cat.toLowerCase().includes(q);
+    const matchF = f==='all' || i.status===f;
+    return matchQ && matchF;
+  });
+  document.getElementById('shopCount').textContent = items.length + ' piezas';
+  document.getElementById('shopEmpty').style.display = items.length ? 'none' : 'block';
+  document.getElementById('shopTableBody').innerHTML = items.map(item => `
+    <tr>
+      <td style="color:var(--muted);font-size:12px;">${item.imageUrl ? `<img class="thumb" src="${esc(item.imageUrl)}" alt="${esc(item.name)}">` : esc(item.emoji||'👕')}</td>
+      <td style="font-weight:500;">${esc(item.name)}</td>
+      <td style="color:var(--muted);font-size:12px;">${item.cat}</td>
+      <td style="font-size:12px;">${item.size}</td>
+      <td style="color:var(--gold);font-family:'Space Mono',monospace;">${fmt(item.price)}</td>
+      <td><span class="status-badge ${item.status==='tienda'||item.status==='available'||item.status==='new'?'s-available':item.status==='last'?'s-reserved':item.status==='sold'?'s-sold':'s-reserved'}">${item.status==='tienda'||item.status==='available'||item.status==='new'?'EN TIENDA':item.status==='last'?'ÚLTIMO':item.status==='sold'?'VENDIDO':'RESERVADO'}</span></td>
+      <td>
+        <div class="action-btns">
+          ${item.status!=='sold'?`<button class="act-btn act-sell" onclick="updateShopStatus('${item.id}','sold')">VENDIDO</button>`:''}
+          ${item.status==='sold'?`<button class="act-btn act-restore" onclick="updateShopStatus('${item.id}','tienda')">RESTAURAR</button>`:''}
+          ${item.status!=='reserved'&&item.status!=='sold'?`<button class="act-btn act-reserve" onclick="updateShopStatus('${item.id}','reserved')">RESERVAR</button>`:''}
+          <button class="act-btn act-delete" onclick="deleteShopItem('${item.id}')">✕</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ---- AUCTION ITEMS ----
+function loadAuctionItems() {
+  const saved = localStorage.getItem('zafa_auction');
+  if (!saved) {
+    auctionItems = getDefaultAuctionItems();
+  } else {
+    auctionItems = JSON.parse(saved);
+  }
+  renderAuctionTable();
+}
+
+function saveAuctionItems() {
+  localStorage.setItem('zafa_auction', JSON.stringify(auctionItems));
+  updateStats();
+}
+
+async function addAuctionItem() {
+  const name = document.getElementById('a-name').value.trim().substring(0, 80);
+  const cat = document.getElementById('a-cat').value;
+  const size = document.getElementById('a-size').value.trim().substring(0, 10);
+  const base_price = parseInt(document.getElementById('a-price').value);
+  const emoji = document.getElementById('a-emoji').value.trim().substring(0, 4) || '🧥';
+  if (!name || !size || !base_price) { showToast('Completá nombre, talla y precio base','err'); return; }
+  if (base_price < 100 || base_price > 9999999) { showToast('Precio base inválido','err'); return; }
+  if (!['Jacket','Hoodie','Jeans','Camiseta','Otro'].includes(cat)) { showToast('Categoría inválida','err'); return; }
+  showToast('Subiendo imagen...','ok');
+  const imageUrl = await uploadImage('a-img', 'auction');
+  const id = 'a' + Date.now();
+  auctionItems.push({id, name, cat, size, base_price, emoji, status:'active', imageUrl});
+  saveAuctionItems();
+  renderAuctionTable();
+  document.getElementById('a-name').value='';
+  document.getElementById('a-size').value='';
+  document.getElementById('a-price').value='';
+  document.getElementById('a-emoji').value='';
+  clearImg('a-img','a-preview');
+  showToast(`${esc(name)} agregada a subasta ✓`,'ok');
+}
+
+function moveToShop(id) {
+  const item = auctionItems.find(i=>i.id===id);
+  if (!item) return;
+  const price = prompt(`¿A qué precio querés poner "${item.name}" en la tienda? (en colones, sin símbolos)`, item.base_price);
+  if (!price) return;
+  const finalPrice = parseInt(price);
+  if (!finalPrice || finalPrice < 100) { showToast('Precio inválido','err'); return; }
+  // Add to shop
+  let shopItems = [];
+  try { const s=localStorage.getItem('zafa_shop'); if(s) shopItems=JSON.parse(s); } catch(e) {}
+  const shopItem = {
+    id: 'shop_'+id,
+    name: item.name,
+    cat: item.cat ? item.cat.toLowerCase() : 'otro',
+    size: item.size,
+    price: finalPrice,
+    emoji: item.emoji || '👕',
+    imageUrl: item.imageUrl || null,
+    status: 'tienda',
+    movedFrom: 'auction',
+    dropNum: item.dropNum || 1,
+  };
+  shopItems.push(shopItem);
+  localStorage.setItem('zafa_shop', JSON.stringify(shopItems));
+  // Remove from auction
+  auctionItems = auctionItems.filter(i=>i.id!==id);
+  saveAuctionItems();
+  renderAuctionTable();
+  showToast(`${esc(item.name)} movida a la tienda por ${fmt(finalPrice)} ✓`,'ok');
+}
+  const item = auctionItems.find(i=>i.id===id);
+  if (!item) return;
+  item.status = status;
+  saveAuctionItems();
+  renderAuctionTable();
+  showToast(`${esc(item.name)} → ${esc(status)}`,'ok');
+}
+
+function deleteAuctionItem(id) {
+  const item = auctionItems.find(i=>i.id===id);
+  if (!confirm(`¿Eliminar "${item?.name}" de la subasta?`)) return;
+  auctionItems = auctionItems.filter(i=>i.id!==id);
+  saveAuctionItems();
+  renderAuctionTable();
+  showToast('Pieza eliminada de subasta','ok');
+}
+
+function notifyWinner(id, pos=0) {
+  const item = auctionItems.find(i=>i.id===id);
+  const s = bidSummary[id];
+  if (!s || !s.top3 || !s.top3[pos]) { showToast('No hay ofertante en esa posición','err'); return; }
+  const bidder = s.top3[pos];
+  const waPhone = bidder.phone.replace(/\D/g,'');
+  const rank = pos===0 ? '🥇 Ganador' : pos===1 ? '🥈 2do lugar' : '🥉 3er lugar';
+  const msg = pos===0
+    ? encodeURIComponent(`Hola ${bidder.name}! 🎉 Ganaste la subasta de ZAFA: *${item.name}* (Talla ${item.size}) con ${fmt(bidder.amount)}. Tenés *24 horas* para pagar por SINPE Móvil al 8501-9010. Si no pagás, la pieza pasa al siguiente ofertante. ¡Gracias!`)
+    : encodeURIComponent(`Hola ${bidder.name}! Te escribimos de ZAFA. El ganador de *${item.name}* (Talla ${item.size}) no realizó el pago a tiempo. Tu oferta de ${fmt(bidder.amount)} es la siguiente — ¿te interesa la pieza? Tenés 24hrs para confirmar. SINPE al 8501-9010.`);
+  if (waPhone) {
+    window.open(`https://wa.me/506${waPhone}?text=${msg}`);
+  } else {
+    showToast(`${rank}: ${bidder.name} — sin número guardado`, 'err');
+  }
+}
+
+function renderAuctionTable() {
+  const q = document.getElementById('auctionSearch')?.value.toLowerCase() || '';
+  const f = document.getElementById('auctionFilter')?.value || 'all';
+  let items = auctionItems.filter(i => {
+    const matchQ = i.name.toLowerCase().includes(q);
+    const matchF = f==='all' || i.status===f;
+    return matchQ && matchF;
+  });
+  document.getElementById('auctionCount').textContent = items.length + ' piezas';
+  document.getElementById('auctionEmpty').style.display = items.length ? 'none' : 'block';
+  document.getElementById('auctionTableBody').innerHTML = items.map(item => {
+    const s = bidSummary[item.id] || {top3:[], count:0, top_bid:item.base_price};
+    const top3 = s.top3 || [];
+    const medals = ['🥇','🥈','🥉'];
+
+    const top3html = top3.length ? top3.map((b,i) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:5px 8px;background:rgba(${i===0?'201,168,76':'90,82,72'},.08);border-radius:2px;border:1px solid rgba(${i===0?'201,168,76':'42,37,32'},.2);">
+        <span style="font-size:12px;">${medals[i]}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:500;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(b.name)}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--gold);">${fmt(b.amount)}</div>
+        </div>
+        <button class="act-btn ${i===0?'act-sell':'act-reserve'}" style="font-size:9px;padding:3px 7px;" onclick="notifyWinner('${item.id}',${i})">${i===0?'NOTIFICAR':'BACKUP'}</button>
+      </div>`).join('') : `<div style="font-size:11px;color:var(--muted);">Sin ofertas</div>`;
+
+    return `<tr>
+      <td style="color:var(--muted);font-size:14px;">${item.emoji||'🧥'}</td>
+      <td style="font-weight:500;">${esc(item.name)}<div style="font-size:11px;color:var(--muted);">Talla ${esc(item.size)} · ${esc(item.cat)}</div></td>
+      <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">${fmt(item.base_price)}</td>
+      <td style="min-width:220px;">${top3html}</td>
+      <td style="font-size:12px;color:var(--muted);">${s.count}</td>
+      <td><span class="status-badge ${item.status==='active'?'s-active':item.status==='sold'?'s-sold':'s-closed'}">${item.status==='active'?'ACTIVA':item.status==='sold'?'VENDIDA':'CERRADA'}</span></td>
+      <td>
+        <div class="action-btns" style="flex-direction:column;gap:4px;">
+          ${item.status==='active'?`<button class="act-btn act-close" onclick="updateAuctionStatus('${item.id}','closed')">CERRAR</button>`:''}
+          ${item.status!=='active'?`<button class="act-btn act-restore" onclick="updateAuctionStatus('${item.id}','active')">REABRIR</button>`:''}
+          ${item.status==='closed'?`<button class="act-btn act-sell" onclick="moveToShop('${item.id}')">🏪 MOVER A TIENDA</button>`:''}
+          <button class="act-btn act-delete" onclick="deleteAuctionItem('${item.id}')">ELIMINAR</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ---- BIDS ----
+async function loadBids() {
+  if (!db) { renderBidsTable(); return; }
+  try {
+    const {data, error} = await db.from('bids').select('id,piece_id,piece_name,bidder_name,bidder_phone,bidder_email,amount,bid_time,created_at').order('amount', {ascending:false});
+    if (error) throw error;
+    allBids = data || [];
+
+    // Build top3 per piece — deduplicate by bidder name (keep their highest bid)
+    bidSummary = {};
+    allBids.forEach(bid => {
+      if (!bidSummary[bid.piece_id]) bidSummary[bid.piece_id] = {top3:[], count:0};
+      const existing = bidSummary[bid.piece_id].top3.find(b => b.name === bid.bidder_name);
+      if (!existing) {
+        bidSummary[bid.piece_id].top3.push({amount:bid.amount, name:bid.bidder_name, phone:bid.bidder_phone||''});
+      } else if (bid.amount > existing.amount) {
+        existing.amount = bid.amount;
+        existing.phone = bid.bidder_phone || existing.phone;
+      }
+    });
+    // Sort top3 by amount desc, keep only top 3, count all bids per piece
+    Object.keys(bidSummary).forEach(pid => {
+      bidSummary[pid].top3.sort((a,b)=>b.amount-a.amount);
+      bidSummary[pid].top3 = bidSummary[pid].top3.slice(0,3);
+      bidSummary[pid].count = allBids.filter(b=>b.piece_id===pid).length;
+      // convenience
+      const t = bidSummary[pid].top3[0];
+      if (t) { bidSummary[pid].top_bid=t.amount; bidSummary[pid].top_bidder=t.name; bidSummary[pid].top_phone=t.phone; }
+    });
+
+    renderBidsTable();
+    renderAuctionTable();
+    updateStats();
+  } catch(e) {
+    showToast('Error cargando ofertas','err');
+    console.error(e);
+  }
+}
+
+function renderBidsTable() {
+  const q = document.getElementById('bidsSearch')?.value.toLowerCase() || '';
+  const f = document.getElementById('bidsFilter')?.value || 'all';
+
+  let bids = allBids.filter(b => {
+    const matchQ = b.piece_name?.toLowerCase().includes(q) || b.bidder_name?.toLowerCase().includes(q) || b.bidder_phone?.includes(q);
+    if (f === 'top') {
+      const s = bidSummary[b.piece_id];
+      return matchQ && s && b.amount === s.top_bid && b.bidder_name === s.top_bidder;
+    }
+    return matchQ;
+  });
+
+  document.getElementById('bidsCount').textContent = bids.length + ' ofertas';
+  document.getElementById('bidsEmpty').style.display = bids.length ? 'none' : 'block';
+
+  document.getElementById('bidsTableBody').innerHTML = bids.map(bid => {
+    const s = bidSummary[bid.piece_id];
+    const isTop = s && bid.amount === s.top_bid && bid.bidder_name === s.top_bidder;
+    const phone = bid.bidder_phone || '';
+    const waPhone = phone.replace(/\D/g,'');
+    const msg = encodeURIComponent(`Hola ${bid.bidder_name}! 🎉 Ganaste "${bid.piece_name}" con ${fmt(bid.amount)}. Tenés 24hrs para pagar por SINPE al 8501-9010.`);
+    return `<tr class="${isTop?'winner-row':''}">
+      <td style="font-weight:500;">${esc(bid.piece_name)}</td>
+      <td>${esc(bid.bidder_name)}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">${esc(bid.bidder_phone||'—')}</td>
+      <td class="${isTop?'bid-top':''}" style="font-family:'Space Mono',monospace;">${fmt(bid.amount)}</td>
+      <td>${isTop?'<span class="status-badge s-available">GANADORA</span>':'<span style="font-size:11px;color:var(--muted);">—</span>'}</td>
+      <td style="font-size:11px;color:var(--muted);">${fmtDate(bid.created_at)}</td>
+      <td>${isTop&&waPhone?`<a href="https://wa.me/506${waPhone}?text=${msg}" target="_blank" style="font-family:'Space Mono',monospace;font-size:9px;padding:4px 10px;background:rgba(37,211,102,.12);color:var(--green);border:1px solid rgba(37,211,102,.3);border-radius:2px;text-decoration:none;white-space:nowrap;">NOTIFICAR</a>`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ---- STATS ----
+function updateStats() {
+  const avail = shopItems.filter(i=>i.status==='tienda'||i.status==='available'||i.status==='new'||i.status==='last').length;
+  const sold = shopItems.filter(i=>i.status==='sold').length;
+  const totalBids = allBids.length;
+  const revenue = Object.values(bidSummary).reduce((s,b)=>s+b.top_bid,0);
+  document.getElementById('st-available').textContent = avail;
+  document.getElementById('st-sold').textContent = sold;
+  document.getElementById('st-bids').textContent = totalBids;
+  document.getElementById('st-revenue').textContent = fmt(revenue);
+  document.getElementById('topbarStats').textContent = `${avail} disponibles · ${sold} vendidas`;
+  // Update tab labels
+  document.querySelectorAll('.tab')[0].textContent = `TIENDA (${shopItems.filter(i=>i.status==='tienda').length})`;
+  document.querySelectorAll('.tab')[1].textContent = `SUBASTA (${auctionItems.filter(i=>i.status==='active').length})`;
+  document.querySelectorAll('.tab')[2].textContent = `OFERTAS (${allBids.length})`;
+  const userCount = (() => { try { const s=localStorage.getItem('zafa_users'); return s?JSON.parse(s).length:0; } catch(e){return 0;} })();
+  document.querySelectorAll('.tab')[3].textContent = `👥 USUARIOS (${userCount})`;
+}
+
+// ---- TABS ----
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['shop','auction','bids','users','drop'][i]===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  if(t==='bids') loadBids();
+  if(t==='users') renderUsersTable();
+  if(t==='drop') loadDropConfig();
+}
+
+// ---- DROP CONFIG ----
+const DEFAULT_CONFIG = {
+  dropNum: 1,
+  previewStart: '',
+  auctionStart: '',
+  auctionEnd: ''
+};
+
+function toLocalInput(isoStr) {
+  if(!isoStr) return '';
+  const d = new Date(isoStr);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromLocalInput(val) {
+  if(!val) return '';
+  return new Date(val).toISOString();
+}
+
+function loadDropConfig() {
+  let cfg = DEFAULT_CONFIG;
+  try { const s = localStorage.getItem('zafa_drop_config'); if(s) cfg = {...DEFAULT_CONFIG, ...JSON.parse(s)}; } catch(e){}
+  document.getElementById('cfg-drop-num').value = cfg.dropNum || 1;
+  document.getElementById('cfg-preview-start').value = toLocalInput(cfg.previewStart);
+  document.getElementById('cfg-auction-start').value = toLocalInput(cfg.auctionStart);
+  document.getElementById('cfg-auction-end').value = toLocalInput(cfg.auctionEnd);
+  document.getElementById('cfg-next-drop').value = toLocalInput(cfg.nextDropDate||'');
+  document.getElementById('cfg-tagline').value = cfg.heroTagline || 'Latinoamérica · Vintage Y2K';
+  document.getElementById('cfg-hero-desc').value = cfg.heroDesc || '🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲';
+  document.getElementById('cfg-ended-text').value = cfg.endedText || 'Estamos notificando a los ganadores.';
+  document.getElementById('cfg-whatsapp').value = cfg.whatsapp || '50685019010';
+  // Load sale mode
+  updateDropState();
+  renderTimeline();
+  document.getElementById('cfg-preview-start').addEventListener('input', ()=>{updateDropState();renderTimeline();});
+  document.getElementById('cfg-auction-start').addEventListener('input', ()=>{updateDropState();renderTimeline();});
+  document.getElementById('cfg-auction-end').addEventListener('input', ()=>{updateDropState();renderTimeline();});
+}
+
+function saveDropConfig() {
+  const cfg = {
+    dropNum: parseInt(document.getElementById('cfg-drop-num').value)||1,
+    previewStart: fromLocalInput(document.getElementById('cfg-preview-start').value),
+    auctionStart: fromLocalInput(document.getElementById('cfg-auction-start').value),
+    auctionEnd: fromLocalInput(document.getElementById('cfg-auction-end').value),
+    nextDropDate: fromLocalInput(document.getElementById('cfg-next-drop').value),
+    heroTagline: document.getElementById('cfg-tagline').value.trim() || 'Latinoamérica · Vintage Y2K',
+    heroDesc: document.getElementById('cfg-hero-desc').value.trim() || '🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲',
+    endedText: document.getElementById('cfg-ended-text').value.trim() || 'Estamos notificando a los ganadores.',
+    whatsapp: document.getElementById('cfg-whatsapp').value.trim() || '50685019010',
+  };
+  if(!cfg.previewStart||!cfg.auctionStart||!cfg.auctionEnd) { showCfgMsg('Completá todas las fechas','err'); return; }
+  if(new Date(cfg.previewStart)>=new Date(cfg.auctionStart)) { showCfgMsg('El preview debe empezar antes que la subasta','err'); return; }
+  if(new Date(cfg.auctionStart)>=new Date(cfg.auctionEnd)) { showCfgMsg('La subasta debe empezar antes de cerrarse','err'); return; }
+  localStorage.setItem('zafa_drop_config', JSON.stringify(cfg));
+  updateDropState();
+  renderTimeline();
+  showCfgMsg('Configuración guardada ✓ — el sitio se actualiza automáticamente','ok');
+  showToast('Drop configurado ✓','ok');
+}
+
+// Sale mode handled automatically by renderShop() in the live site
+
+function updateDropState() {
+  const el = document.getElementById('cfg-state-badge');
+  if(!el) return;
+  const ps = document.getElementById('cfg-preview-start').value;
+  const as = document.getElementById('cfg-auction-start').value;
+  const ae = document.getElementById('cfg-auction-end').value;
+  if(!ps||!as||!ae) { el.textContent='Sin configurar'; el.style.color='var(--muted)'; return; }
+  const now = new Date();
+  let state, color;
+  if(now<new Date(ps)) { state='⏳ Antes del drop'; color='var(--muted)'; }
+  else if(now<new Date(as)) { state='👁 Preview activo'; color='var(--gold)'; }
+  else if(now<new Date(ae)) { state='🔥 SUBASTA EN VIVO'; color='var(--rust)'; }
+  else { state='✅ Subasta cerrada'; color='#22c55e'; }
+  el.textContent = state;
+  el.style.color = color;
+}
+
+function renderTimeline() {
+  const el = document.getElementById('cfg-timeline');
+  if(!el) return;
+  const ps = document.getElementById('cfg-preview-start').value;
+  const as = document.getElementById('cfg-auction-start').value;
+  const ae = document.getElementById('cfg-auction-end').value;
+  if(!ps||!as||!ae) { el.innerHTML='<div style="font-size:12px;color:var(--muted);">Completá las fechas para ver el timeline</div>'; return; }
+  const fmt2 = d => new Date(d).toLocaleString('es-CR',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const now = new Date();
+  const phases = [
+    {label:'PREVIEW', start:ps, end:as, color:'var(--muted)', active:now>=new Date(ps)&&now<new Date(as)},
+    {label:'SUBASTA', start:as, end:ae, color:'var(--rust)', active:now>=new Date(as)&&now<new Date(ae)},
+  ];
+  el.innerHTML = phases.map(p=>`
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${p.active?p.color:'var(--border)'};margin-top:5px;flex-shrink:0;${p.active?`box-shadow:0 0 0 3px ${p.color}22`:''};"></div>
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:${p.active?p.color:'var(--muted)'};">${p.label}${p.active?' ← AHORA':''}</div>
+        <div style="font-size:12px;color:var(--cream);margin-top:2px;">${fmt2(p.start)} → ${fmt2(p.end)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px;">${Math.round((new Date(p.end)-new Date(p.start))/3600000)} horas</div>
+      </div>
+    </div>`).join('');
+}
+
+function copyDropCode() {
+  const ps = document.getElementById('cfg-preview-start').value;
+  const as = document.getElementById('cfg-auction-start').value;
+  const ae = document.getElementById('cfg-auction-end').value;
+  const num = document.getElementById('cfg-drop-num').value||1;
+  if(!ps||!as||!ae) { showCfgMsg('Completá las fechas primero','err'); return; }
+  const code = `const DROP_CONFIG = {\n  previewStart: new Date('${fromLocalInput(ps)}'),\n  auctionStart: new Date('${fromLocalInput(as)}'),\n  auctionEnd:   new Date('${fromLocalInput(ae)}'),\n};`;
+  navigator.clipboard.writeText(code).then(()=>{
+    showCfgMsg('Código copiado! Pegalo en zafa-live.html reemplazando la sección DROP_CONFIG','ok');
+    showToast('Código copiado al portapapeles','ok');
+  });
+}
+
+function showCfgMsg(text, type) {
+  const el = document.getElementById('cfgMsg');
+  el.textContent = text;
+  el.className = 'bid-msg ' + (type==='ok'?'ok':'err');
+}
+
+// ---- USERS ----
+function renderUsersTable() {
+  const q = document.getElementById('usersSearch')?.value.toLowerCase()||'';
+
+  // Build user map from all bids
+  const userMap = {};
+  allBids.forEach(b => {
+    const key = b.bidder_phone || b.bidder_name;
+    if(!userMap[key]) userMap[key] = {
+      name: b.bidder_name,
+      phone: b.bidder_phone||'—',
+      email: b.bidder_email||'—',
+      firstBid: b.bid_time||b.created_at,
+      bids: 0,
+      won: 0,
+    };
+    userMap[key].bids++;
+  });
+
+  // Count wins — a user "won" a piece if they have the top bid on it
+  Object.keys(bidSummary).forEach(pieceId => {
+    const s = bidSummary[pieceId];
+    if(!s || !s.top3 || !s.top3[0]) return;
+    const winner = s.top3[0];
+    const winnerKey = winner.phone || winner.name;
+    if(userMap[winnerKey]) userMap[winnerKey].won++;
+  });
+
+  let users = Object.values(userMap).filter(u =>
+    u.name.toLowerCase().includes(q) || u.phone.includes(q)
+  );
+
+  // Sort by most bids
+  users.sort((a,b) => b.bids - a.bids);
+
+  document.getElementById('usersCount').textContent = users.length + ' usuarios';
+  document.getElementById('usersEmpty').style.display = users.length ? 'none' : 'block';
+  document.getElementById('usersTableBody').innerHTML = users.map(u=>`
+    <tr>
+      <td style="font-weight:500;">${esc(u.name)}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:11px;">${esc(u.phone)}</td>
+      <td style="font-size:11px;color:var(--muted);">${fmtDate(u.firstBid)}</td>
+      <td style="font-size:12px;color:var(--gold);font-family:'Space Mono',monospace;text-align:center;">${esc(String(u.bids||0))}</td>
+      <td style="font-size:12px;color:${u.won>0?'#22c55e':'var(--muted)'};font-family:'Space Mono',monospace;text-align:center;font-weight:${u.won>0?'700':'400'};">${esc(String(u.won||0))}</td>
+    </tr>`).join('');
+}
+
+// ---- TOAST ----
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ---- DEFAULT DATA ----
+function getDefaultShopItems() {
+  return [
+    {id:'s1',name:'Camiseta Nirvana',cat:'camiseta',size:'M',price:5000,emoji:'👕',status:'available'},
+    {id:'s2',name:'Tee Retro Stripe',cat:'camiseta',size:'S',price:5000,emoji:'👕',status:'available'},
+    {id:'s3',name:'Camiseta Logo Y2K',cat:'camiseta',size:'L',price:5000,emoji:'👕',status:'available'},
+    {id:'s4',name:'Tee Faded Graphic',cat:'camiseta',size:'M',price:5000,emoji:'👕',status:'available'},
+    {id:'s5',name:'Camiseta Vintage Band',cat:'camiseta',size:'XL',price:5000,emoji:'👕',status:'available'},
+    {id:'s6',name:'Tee Overdye 90s',cat:'camiseta',size:'S',price:5000,emoji:'👕',status:'last'},
+    {id:'s7',name:'Camiseta Crop Retro',cat:'camiseta',size:'M',price:5000,emoji:'👕',status:'available'},
+    {id:'s8',name:'Tee Distressed',cat:'camiseta',size:'L',price:5000,emoji:'👕',status:'available'},
+    {id:'s9',name:'Hoodie Champion',cat:'hoodie',size:'M',price:10000,emoji:'👘',status:'available'},
+    {id:'s10',name:'Hoodie Vintage Logo',cat:'hoodie',size:'L',price:10000,emoji:'👘',status:'available'},
+    {id:'s11',name:'Hoodie Zip 90s',cat:'hoodie',size:'S',price:10000,emoji:'👘',status:'last'},
+    {id:'s12',name:'Hoodie Oversized',cat:'hoodie',size:'XL',price:10000,emoji:'👘',status:'available'},
+    {id:'s13',name:'Sweatshirt Retro',cat:'hoodie',size:'M',price:10000,emoji:'👘',status:'available'},
+    {id:'s14',name:'Hoodie Faded',cat:'hoodie',size:'L',price:10000,emoji:'👘',status:'available'},
+    {id:'s15',name:'Jeans Baggy 90s',cat:'jeans',size:'30',price:10000,emoji:'👖',status:'available'},
+    {id:'s16',name:'Jeans Straight Vintage',cat:'jeans',size:'28',price:10000,emoji:'👖',status:'available'},
+    {id:'s17',name:'Jeans High Waist',cat:'jeans',size:'26',price:10000,emoji:'👖',status:'last'},
+    {id:'s18',name:'Jeans Wide Leg',cat:'jeans',size:'30',price:10000,emoji:'👖',status:'available'},
+    {id:'s19',name:'Denim Distressed',cat:'jeans',size:'32',price:10000,emoji:'👖',status:'available'},
+    {id:'s20',name:'2x Jeans Bundle',cat:'jeans',size:'varios',price:15000,emoji:'👖',status:'available'},
+    {id:'s21',name:'Jacket Denim Y2K',cat:'jacket',size:'M',price:12000,emoji:'🧥',status:'available'},
+    {id:'s22',name:'Jacket Varsity',cat:'jacket',size:'L',price:12000,emoji:'🧥',status:'available'},
+    {id:'s23',name:'Jacket Windbreaker',cat:'jacket',size:'S',price:12000,emoji:'🧥',status:'available'},
+    {id:'s24',name:'Jacket Retro Track',cat:'jacket',size:'M',price:12000,emoji:'🧥',status:'last'},
+    {id:'s25',name:'Jacket Leather Look',cat:'jacket',size:'L',price:15000,emoji:'🧥',status:'available'},
+  ];
+}
+
+function getDefaultAuctionItems() {
+  return [
+    {id:'a1',name:'Crop Jacket Y2K',size:'S',cat:'Jacket',base_price:5000,emoji:'🧥',status:'active'},
+    {id:'a2',name:'Denim Jacket Rare',size:'M',cat:'Jacket',base_price:6000,emoji:'🧥',status:'active'},
+    {id:'a3',name:'Hoodie Graphic Logo',size:'L',cat:'Hoodie',base_price:6000,emoji:'👘',status:'active'},
+    {id:'a4',name:'Windbreaker 2000s',size:'M',cat:'Jacket',base_price:7000,emoji:'🧥',status:'active'},
+    {id:'a5',name:'Jeans Vintage Wash',size:'28',cat:'Jeans',base_price:5500,emoji:'👖',status:'active'},
+    {id:'a6',name:'Tee Rare Band',size:'XL',cat:'Camiseta',base_price:4000,emoji:'👕',status:'active'},
+    {id:'a7',name:'Track Jacket 90s',size:'S',cat:'Jacket',base_price:6500,emoji:'🧥',status:'active'},
+    {id:'a8',name:'Bomber Y2K',size:'M',cat:'Jacket',base_price:8000,emoji:'🧥',status:'active'},
+    {id:'a9',name:'Camiseta Crop Rare',size:'XS',cat:'Camiseta',base_price:3500,emoji:'👕',status:'active'},
+    {id:'a10',name:'Hoodie Retro Color',size:'L',cat:'Hoodie',base_price:7000,emoji:'👘',status:'active'},
+  ];
+}
+</script>
+</body>
+</html>
