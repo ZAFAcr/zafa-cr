@@ -91,6 +91,11 @@
   .acard .pimg{background:#130f0c;}
   .bid-count-badge{position:absolute;top:10px;left:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;background:var(--rust);color:var(--cream);padding:2px 8px;border-radius:2px;}
   .preview-badge{position:absolute;top:10px;left:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;background:#2a2520;color:var(--muted);padding:2px 8px;border-radius:2px;border:1px solid var(--border);}
+  .hot-badge{position:absolute;top:10px;right:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;background:var(--gold);color:var(--black);font-weight:700;padding:2px 8px;border-radius:2px;box-shadow:0 0 12px rgba(201,168,76,.5);animation:hotpulse 1.8s ease-in-out infinite;}
+  @keyframes hotpulse{0%,100%{box-shadow:0 0 8px rgba(201,168,76,.4)}50%{box-shadow:0 0 16px rgba(201,168,76,.75)}}
+  .spark{position:fixed;width:6px;height:6px;border-radius:50%;background:var(--gold);pointer-events:none;z-index:700;box-shadow:0 0 6px 2px rgba(201,168,76,.7);}
+  @keyframes sparkfly{to{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0;}}
+  .nav-burger{display:none;background:none;border:none;color:var(--cream);font-size:22px;cursor:pointer;line-height:1;padding:4px 6px;}
   .ainfo{padding:12px 14px;border-top:1px solid var(--border);}
   .aname{font-size:13px;font-weight:500;color:var(--cream);margin-bottom:3px;}
   .ameta{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;}
@@ -185,7 +190,11 @@
   .reveal.visible{opacity:1;transform:translateY(0);}
   @media(max-width:640px){
     nav{padding:14px 20px;}
-    .nav-links a:not(.nav-reg){display:none;}
+    .nav-burger{display:block;}
+    .nav-links{position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;padding:0;background:rgba(13,13,13,.98);border-bottom:1px solid var(--border);max-height:0;overflow:hidden;transition:max-height .3s ease;}
+    .nav-links.open{max-height:360px;}
+    .nav-links a,.nav-links #navUser{width:100%;padding:14px 20px;border-top:1px solid var(--border);}
+    .nav-wa,.nav-reg{border-radius:0!important;}
     section{padding:60px 20px;}
     .hero{padding:100px 20px 60px;}
     .hero-side{display:none;}
@@ -199,7 +208,8 @@
 <!-- NAV -->
 <nav>
   <a class="logo" href="#">ZAF<em>A</em></a>
-  <div class="nav-links">
+  <button class="nav-burger" id="navBurger" onclick="toggleMenu()" aria-label="Menú">☰</button>
+  <div class="nav-links" id="navLinks">
     <a href="#how">¿Cómo funciona?</a>
     <a href="#auction" id="navAuction">Subasta</a>
     <a href="#shop" id="navShop" style="display:none;">Tienda</a>
@@ -244,6 +254,13 @@
     <div class="sec-count" id="auctionCount">— PIEZAS</div>
   </div>
   <div id="auctionBanner"></div>
+  <div class="filters reveal" id="auctionFilters" style="display:none;">
+    <button class="filt on" onclick="filterAuction('all',this)">TODO</button>
+    <button class="filt" onclick="filterAuction('Camiseta',this)">CAMISETAS</button>
+    <button class="filt" onclick="filterAuction('Hoodie',this)">HOODIES</button>
+    <button class="filt" onclick="filterAuction('Jeans',this)">JEANS</button>
+    <button class="filt" onclick="filterAuction('Jacket',this)">JACKETS</button>
+  </div>
   <div class="auction-grid" id="auctionGrid"></div>
 </section>
 
@@ -324,42 +341,35 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // WA loaded from config below
 // ============================================================
 
-function getWA(){try{const s=localStorage.getItem('zafa_drop_config');if(s){const c=JSON.parse(s);if(c.whatsapp)return c.whatsapp;}return'50685019010';}catch(e){return'50685019010';}}
+// ---- SHARED STATE (loaded from Supabase, see bootstrap()) ----
+let LIVE_CONFIG=null;      // raw site_config row
+let AUCTION_PIECES=[];     // mapped auction pieces {id,name,cat,size,emoji,base_price,status,imageUrl}
+let SHOP_PIECES=[];        // mapped shop pieces {id,name,cat,size,emoji,price,status,imageUrl}
+
+function getWA(){return (LIVE_CONFIG && LIVE_CONFIG.whatsapp) ? LIVE_CONFIG.whatsapp : '50685019010';}
 // ---- SUPABASE ----
 let db=null;
 try{const{createClient}=supabase;if(SUPABASE_URL!=='YOUR_SUPABASE_URL')db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){console.warn('Supabase init failed',e);}
+
+function mapPiece(r){return {id:r.id,type:r.type,name:r.name,cat:r.cat,size:r.size,emoji:r.emoji,price:r.price,base_price:r.base_price,status:r.status,imageUrl:r.image_url};}
 
 // ---- SANITIZE ----
 function esc(str){const d=document.createElement('div');d.appendChild(document.createTextNode(String(str||'')));return d.innerHTML;}
 
 // ---- DROP CONFIG ----
 function loadDropConfig(){
-  try{
-    const s=localStorage.getItem('zafa_drop_config');
-    if(s){
-      const c=JSON.parse(s);
-      return{
-        previewStart:new Date(c.previewStart),
-        auctionStart:new Date(c.auctionStart),
-        auctionEnd:new Date(c.auctionEnd),
-        dropNum:c.dropNum||1,
-        nextDropDate:c.nextDropDate||null,
-        heroTagline:c.heroTagline||'Latinoamérica · Vintage Y2K',
-        heroDesc:c.heroDesc||'🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲',
-        endedText:c.endedText||'Estamos notificando a los ganadores.',
-        whatsapp:c.whatsapp||'50685019010',
-      };
-    }
-  }catch(e){}
+  const c=LIVE_CONFIG||{};
+  const defDesc='🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲';
   return{
-    previewStart:new Date('2099-01-01T18:00:00-06:00'),
-    auctionStart:new Date('2099-01-03T18:00:00-06:00'),
-    auctionEnd:new Date('2099-01-05T18:00:00-06:00'),
-    dropNum:1,nextDropDate:null,
-    heroTagline:'Latinoamérica · Vintage Y2K',
-    heroDesc:'🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲',
-    endedText:'Estamos notificando a los ganadores.',
-    whatsapp:'50685019010',
+    previewStart:c.preview_start?new Date(c.preview_start):new Date('2099-01-01T18:00:00-06:00'),
+    auctionStart:c.auction_start?new Date(c.auction_start):new Date('2099-01-03T18:00:00-06:00'),
+    auctionEnd:c.auction_end?new Date(c.auction_end):new Date('2099-01-05T18:00:00-06:00'),
+    dropNum:c.drop_num||1,
+    nextDropDate:c.next_drop_date||null,
+    heroTagline:c.hero_tagline||'Latinoamérica · Vintage Y2K',
+    heroDesc:c.hero_desc||defDesc,
+    endedText:c.ended_text||'Estamos notificando a los ganadores.',
+    whatsapp:c.whatsapp||'50685019010',
   };
 }
 
@@ -427,8 +437,7 @@ function startCountdown(target){
 const emojis=['👕','🧥','👖','👗','🎽','🦺','👔','🧤','👘','🩱'];
 
 function renderShop(filter='all'){
-  let items=[];
-  try{const s=localStorage.getItem('zafa_shop');if(s)items=JSON.parse(s).filter(i=>i.status==='tienda');}catch(e){}
+  let items=SHOP_PIECES.filter(i=>i.status==='tienda'||i.status==='last');
   const filtered=filter==='all'?items:items.filter(i=>i.cat===filter);
   const shopSec=document.getElementById('shop');
   const navShop=document.getElementById('navShop');
@@ -472,23 +481,44 @@ function filterShop(cat,btn){
 let bidData={};
 let currentAuctionPiece=null;
 let lastBidTime={};
+let AUCTION_FILTER='all';
+let HOT_PIECES=new Set();
 
 function fmt(n){return'₡'+Number(n).toLocaleString();}
 
+function computeHotPieces(){
+  const arr=AUCTION_PIECES.filter(i=>i.status==='active')
+    .map(i=>({id:i.id,c:(bidData[i.id]||{}).bid_count||0}))
+    .filter(x=>x.c>=2);
+  arr.sort((a,b)=>b.c-a.c);
+  HOT_PIECES=new Set(arr.slice(0,5).map(x=>x.id));
+}
+
+function filterAuction(cat,btn){
+  AUCTION_FILTER=cat;
+  document.querySelectorAll('#auctionFilters .filt').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  renderAuction();
+}
+
 function renderAuction(){
-  let items=[];
-  try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s).filter(i=>i.status==='active');}catch(e){}
-  document.getElementById('auctionCount').textContent=items.length+' PIEZAS';
+  const active=AUCTION_PIECES.filter(i=>i.status==='active');
+  const fb=document.getElementById('auctionFilters');
+  if(fb)fb.style.display=active.length>0?'flex':'none';
+  document.getElementById('auctionCount').textContent=active.length+' PIEZAS';
   const{state}=getDropState();
   const isActive=state==='active';
+  const items=AUCTION_FILTER==='all'?active:active.filter(i=>i.cat===AUCTION_FILTER);
   document.getElementById('auctionGrid').innerHTML=items.map((item,i)=>{
-    const d=bidData[item.id]||{top_bid:item.base_price,top_bidder:null,bid_count:0};
+    const d=bidData[item.id]||{top_bid:item.base_price,top_bidder:null,bid_count:0,bidders:0};
     const imgHtml=item.imageUrl?`<img src="${esc(item.imageUrl)}" alt="${esc(item.name)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">`:`<span style="font-size:52px;opacity:.35;">${item.emoji||emojis[i%emojis.length]}</span>`;
     const badge=isActive?`<span class="bid-count-badge" id="bc-${esc(item.id)}">${d.bid_count} OFERTAS</span>`:`<span class="preview-badge">PREVIEW</span>`;
+    const hot=isActive&&HOT_PIECES.has(item.id)?`<span class="hot-badge">⚡ MÁS PUJADA</span>`:'';
     const bidBtn=isActive?`<button class="bid-btn" onclick="event.stopPropagation();openBidModal(${JSON.stringify(item.id)})">OFERTAR AHORA →</button>`:`<button class="bid-btn" disabled>SUBASTA AÚN NO ABRE</button>`;
+    const peopleTxt=isActive&&d.bidders>0?`${d.bidders} ${d.bidders===1?'persona':'personas'} pujando`:(isActive?'sé el primero':'⏳ pronto');
     return`<div class="acard" onclick="openBidModal(${JSON.stringify(item.id)})">
       <div class="pimg" style="background:#130f0c;position:relative;">
-        ${badge}${imgHtml}
+        ${badge}${hot}${imgHtml}
       </div>
       <div class="ainfo">
         <div class="aname">${esc(item.name)}</div>
@@ -498,7 +528,7 @@ function renderAuction(){
             <div class="bid-lbl">${isActive&&d.bid_count>0?'OFERTA MÁS ALTA':'PRECIO BASE'}</div>
             <div class="bid-amt" id="ba-${esc(item.id)}">${fmt(d.top_bid)}</div>
           </div>
-          <div class="bid-right">${isActive&&d.top_bidder?esc(d.top_bidder):'—'}<br><span style="color:var(--rust);font-size:10px;">${isActive?'↑ activo':'⏳ pronto'}</span></div>
+          <div class="bid-right">${isActive&&d.top_bidder?esc(d.top_bidder):'—'}<br><span style="color:var(--gold);font-size:10px;">${peopleTxt}</span></div>
         </div>
         ${bidBtn}
       </div>
@@ -508,39 +538,68 @@ function renderAuction(){
 
 // ---- BIDS ----
 async function loadBids(){
-  let items=[];
-  try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s).filter(i=>i.status==='active');}catch(e){}
-  if(!db){items.forEach(item=>{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0};});renderAuction();return;}
+  let items=AUCTION_PIECES.filter(i=>i.status==='active');
+  if(!db){items.forEach(item=>{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0,bidders:0,_set:new Set()};});renderAuction();return;}
   try{
-    const{data,error}=await db.from('bids').select('piece_id,bidder_name,amount,bid_time');
+    const{data,error}=await db.from('public_bids').select('piece_id,bidder_name,amount');
     if(error)throw error;
     items.forEach(item=>{
       const bids=data.filter(b=>b.piece_id===item.id);
-      if(bids.length>0){const top=bids.reduce((a,b)=>a.amount>b.amount?a:b);bidData[item.id]={top_bid:top.amount,top_bidder:top.bidder_name,bid_count:bids.length};}
-      else{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0};}
+      if(bids.length>0){
+        const top=bids.reduce((a,b)=>a.amount>b.amount?a:b);
+        const set=new Set(bids.map(b=>b.bidder_name));
+        bidData[item.id]={top_bid:top.amount,top_bidder:top.bidder_name,bid_count:bids.length,bidders:set.size,_set:set};
+      } else {
+        bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0,bidders:0,_set:new Set()};
+      }
     });
+    computeHotPieces();
     renderAuction();
-  }catch(e){items.forEach(item=>{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0};});renderAuction();}
+  }catch(e){items.forEach(item=>{bidData[item.id]={top_bid:item.base_price,top_bidder:null,bid_count:0,bidders:0,_set:new Set()};});renderAuction();}
 }
 
 function subscribeToLiveBids(){
   if(!db)return;
   try{
-    db.channel('bids-ch').on('postgres_changes',{event:'INSERT',schema:'public',table:'bids'},payload=>{
+    db.channel('bids-ch').on('postgres_changes',{event:'INSERT',schema:'public',table:'public_bids'},payload=>{
       const bid=payload.new;
-      const cur=bidData[bid.piece_id]||{top_bid:0,bid_count:0};
+      const cur=bidData[bid.piece_id]||{top_bid:0,bid_count:0,bidders:0,_set:new Set()};
+      if(!cur._set)cur._set=new Set();
       if(bid.amount>cur.top_bid){
-        bidData[bid.piece_id]={top_bid:bid.amount,top_bidder:bid.bidder_name,bid_count:cur.bid_count+1};
+        cur._set.add(bid.bidder_name);
+        bidData[bid.piece_id]={top_bid:bid.amount,top_bidder:bid.bidder_name,bid_count:(cur.bid_count||0)+1,bidders:cur._set.size,_set:cur._set};
         const ba=document.getElementById('ba-'+bid.piece_id);
         const bc=document.getElementById('bc-'+bid.piece_id);
-        if(ba){ba.textContent=fmt(bid.amount);ba.classList.add('updated');setTimeout(()=>ba.classList.remove('updated'),1200);}
+        if(ba){ba.textContent=fmt(bid.amount);ba.classList.add('updated');setTimeout(()=>ba.classList.remove('updated'),1200);goldBurst(ba);}
         if(bc)bc.textContent=bidData[bid.piece_id].bid_count+' OFERTAS';
         showToast(`Nueva oferta: ${fmt(bid.amount)} por ${esc(bid.bidder_name)}`,'success');
         if(currentAuctionPiece===bid.piece_id){document.getElementById('am-topbid').textContent=fmt(bid.amount);document.getElementById('am-topbidder').textContent='por '+esc(bid.bidder_name);}
+        const wasHot=HOT_PIECES.has(bid.piece_id);
+        computeHotPieces();
+        if(HOT_PIECES.has(bid.piece_id)!==wasHot)renderAuction();
       }
     }).subscribe();
   }catch(e){console.warn('Realtime not available');}
 }
+
+// Gold spark burst near an element (live-bid feedback)
+function goldBurst(el){
+  if(!el)return;
+  const r=el.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  for(let i=0;i<10;i++){
+    const s=document.createElement('span');s.className='spark';
+    s.style.left=cx+'px';s.style.top=cy+'px';
+    const ang=Math.random()*Math.PI*2, dist=22+Math.random()*40;
+    s.style.setProperty('--dx',(Math.cos(ang)*dist).toFixed(0)+'px');
+    s.style.setProperty('--dy',(Math.sin(ang)*dist).toFixed(0)+'px');
+    s.style.animation=`sparkfly ${600+Math.random()*400}ms ease-out forwards`;
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),1100);
+  }
+}
+
+function toggleMenu(){const n=document.getElementById('navLinks');if(n)n.classList.toggle('open');}
 
 // ---- SESSION ----
 let currentUser=null;
@@ -650,7 +709,7 @@ async function verifyCode(){
 function openBidModal(id){
   currentAuctionPiece=id;
   const{state}=getDropState();
-  let items=[];try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s);}catch(e){}
+  const items=AUCTION_PIECES;
   const item=items.find(i=>i.id===id);if(!item)return;
   const d=bidData[id]||{top_bid:item.base_price,top_bidder:null};
   document.getElementById('am-name').textContent=item.name;
@@ -694,7 +753,7 @@ async function submitBid(){
   if(!amount||amount<100){msg.textContent='Ingresá un monto válido';msg.className='bid-msg err';return;}
   const rateKey=currentUser.phone+'_'+currentAuctionPiece;
   if(Date.now()-(lastBidTime[rateKey]||0)<10000){msg.textContent='Esperá unos segundos antes de volver a ofertar';msg.className='bid-msg err';return;}
-  let items=[];try{const s=localStorage.getItem('zafa_auction');if(s)items=JSON.parse(s);}catch(e){}
+  const items=AUCTION_PIECES;
   const item=items.find(i=>i.id===currentAuctionPiece);
   const cur=bidData[currentAuctionPiece]||{top_bid:item.base_price};
   if(amount<=cur.top_bid){msg.textContent=`Tu oferta debe ser mayor a ${fmt(cur.top_bid)}`;msg.className='bid-msg err';return;}
@@ -702,8 +761,9 @@ async function submitBid(){
   btn.disabled=true;btn.textContent='ENVIANDO...';msg.textContent='';
   if(!db){msg.textContent='Conectá Supabase para activar las ofertas.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
   try{
-    const{error}=await db.from('bids').insert({piece_id:currentAuctionPiece,piece_name:item.name,bidder_name:currentUser.name,bidder_phone:currentUser.phone,bidder_email:currentUser.email,amount:amount,bid_time:new Date().toISOString(),created_at:new Date().toISOString()});
+    const{data,error}=await db.rpc('place_bid',{p_piece_id:currentAuctionPiece,p_piece_name:item.name,p_bidder_name:currentUser.name,p_bidder_phone:currentUser.phone,p_bidder_email:currentUser.email,p_amount:amount});
     if(error)throw error;
+    if(data&&data.ok===false){msg.textContent=data.error||'No se pudo registrar la oferta';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
     lastBidTime[rateKey]=Date.now();
     msg.textContent=`¡Oferta de ${fmt(amount)} registrada! Te avisamos si ganás.`;msg.className='bid-msg ok';
     document.getElementById('bidAmount').value='';btn.textContent='¡OFERTA ENVIADA!';
@@ -713,7 +773,7 @@ async function submitBid(){
 
 // ---- BUY MODAL ----
 function openBuyModal(id){
-  let items=[];try{const s=localStorage.getItem('zafa_shop');if(s)items=JSON.parse(s);}catch(e){}
+  const items=SHOP_PIECES;
   const item=items.find(i=>i.id===id);if(!item)return;
   document.getElementById('bm-name').textContent=item.name;
   document.getElementById('bm-meta').textContent=`TALLA ${item.size} · EXCELENTE ESTADO`;
@@ -732,14 +792,41 @@ function showToast(msg,type='success'){
 
 const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:0.05});
 document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+document.querySelectorAll('#navLinks a').forEach(a=>a.addEventListener('click',()=>document.getElementById('navLinks').classList.remove('open')));
 setTimeout(()=>{document.querySelectorAll('.reveal').forEach(el=>{if(el.getBoundingClientRect().top<window.innerHeight)el.classList.add('visible');});},80);
 
+// ---- INVENTORY + CONFIG FROM SUPABASE ----
+async function fetchInventory(){
+  if(!db)return;
+  const{data:pcs}=await db.from('pieces').select('*').order('created_at',{ascending:true});
+  const mapped=(pcs||[]).map(mapPiece);
+  AUCTION_PIECES=mapped.filter(p=>p.type==='auction');
+  SHOP_PIECES=mapped.filter(p=>p.type==='shop');
+}
+async function fetchConfig(){
+  if(!db)return;
+  const{data:cfg}=await db.from('site_config').select('*').eq('id','current').maybeSingle();
+  if(cfg)LIVE_CONFIG=cfg;
+}
+function subscribeToInventory(){
+  if(!db)return;
+  try{
+    db.channel('pieces-ch').on('postgres_changes',{event:'*',schema:'public',table:'pieces'},async()=>{await fetchInventory();renderShop();loadBids();}).subscribe();
+    db.channel('config-ch').on('postgres_changes',{event:'*',schema:'public',table:'site_config'},async()=>{await fetchConfig();renderPage();renderAuction();}).subscribe();
+  }catch(e){console.warn('inventory realtime not available');}
+}
+
 // ---- INIT ----
-loadSession();
-renderPage();
-renderShop();
-loadBids();
-subscribeToLiveBids();
+async function bootstrap(){
+  await Promise.all([fetchConfig(),fetchInventory()]);
+  loadSession();
+  renderPage();
+  renderShop();
+  loadBids();
+  subscribeToLiveBids();
+  subscribeToInventory();
+}
+bootstrap();
 </script>
 </body>
 </html>

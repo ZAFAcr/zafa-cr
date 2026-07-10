@@ -1,22 +1,21 @@
 // ZAFA — Verification email — Cloudflare Pages Function
 
-const RESEND_API_KEY = 're_UcNx8snS_Bfc13A7gkT9dckVzHStU9R5L';
-const FROM_EMAIL = 'notificaciones@zafa.cr';
-const SECRET = 'zafa_secret_2025_cr';
+// Secrets come from Cloudflare env (Pages → Settings → Environment variables):
+//   RESEND_API_KEY, VERIFY_SECRET   (FROM_EMAIL optional; defaults below)
 
-async function signCode(code, email, expires) {
-  const data = `${code}:${email}:${expires}:${SECRET}`;
+async function signCode(code, email, expires, secret) {
+  const data = `${code}:${email}:${expires}:${secret}`;
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(SECRET), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
   return Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('').substring(0,16);
 }
 
-async function verifyToken(token, email) {
+async function verifyToken(token, email, secret) {
   try {
     const [code, expires, sig] = token.split('.');
     if (Date.now() > parseInt(expires)) return {valid:false, reason:'expired'};
-    const expected = await signCode(code, email, expires);
+    const expected = await signCode(code, email, expires, secret);
     if (sig !== expected) return {valid:false, reason:'invalid'};
     return {valid:true, code};
   } catch(e) { return {valid:false, reason:'malformed'}; }
@@ -49,8 +48,14 @@ function json(data, status=200, origin='') {
 
 // Single export handles ALL methods
 export async function onRequest(context) {
-  const {request} = context;
+  const {request, env} = context;
   const origin = request.headers.get('Origin') || '';
+  const RESEND_API_KEY = env.RESEND_API_KEY;
+  const SECRET = env.VERIFY_SECRET;
+  const FROM_EMAIL = env.FROM_EMAIL || 'notificaciones@zafa.cr';
+  if (!RESEND_API_KEY || !SECRET) {
+    return json({error:'Servidor sin configurar (faltan variables de entorno)'}, 500, origin);
+  }
 
   // Handle preflight
   if (request.method === 'OPTIONS') {
@@ -78,7 +83,7 @@ export async function onRequest(context) {
     }
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = Date.now() + 10 * 60 * 1000;
-    const sig = await signCode(verifyCode, email, expires.toString());
+    const sig = await signCode(verifyCode, email, expires.toString(), SECRET);
     const signedToken = `${verifyCode}.${expires}.${sig}`;
 
     try {
@@ -120,7 +125,7 @@ export async function onRequest(context) {
   // VERIFY
   if (action === 'verify') {
     if (!token || !code) return json({error:'Datos incompletos'}, 400, origin);
-    const result = await verifyToken(token, email);
+    const result = await verifyToken(token, email, SECRET);
     if (!result.valid) {
       const msg = result.reason === 'expired' ? 'El código expiró — solicitá uno nuevo' : 'Código incorrecto';
       return json({error:msg}, 400, origin);

@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "include": ["/send-verification"],
+  "include": ["/send-verification", "/admin-api"],
   "exclude": []
 }
