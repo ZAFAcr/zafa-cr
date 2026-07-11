@@ -468,6 +468,8 @@ async function dbDeletePiece(id)  { await adminApi('deletePiece', { id }); }
 
 function fmt(n) { return '₡' + Number(n).toLocaleString(); }
 function fmtDate(d) { if(!d) return '—'; try { return new Date(d).toLocaleString('es-CR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return '—'; } }
+// Sanitize text before inserting into HTML (prevents XSS; used across all tables)
+function esc(str){const d=document.createElement('div');d.appendChild(document.createTextNode(String(str==null?'':str)));return d.innerHTML;}
 
 // ---- AUTH ----
 // Session timeout — 2 hours
