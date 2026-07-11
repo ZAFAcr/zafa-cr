@@ -6,6 +6,7 @@
 <title>ZAFA — Ropa Vintage Y2K</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
   :root {
     --black:#0d0d0d; --cream:#f0e8d8; --gold:#c9a84c; --rust:#c4522a;
@@ -601,108 +602,255 @@ function goldBurst(el){
 
 function toggleMenu(){const n=document.getElementById('navLinks');if(n)n.classList.toggle('open');}
 
-// ---- SESSION ----
-let currentUser=null;
-function loadSession(){try{const s=localStorage.getItem('zafa_user');if(s)currentUser=JSON.parse(s);}catch(e){}updateNavUser();}
-function saveSession(u){currentUser=u;localStorage.setItem('zafa_user',JSON.stringify(u));}
-function logout(){currentUser=null;localStorage.removeItem('zafa_user');updateNavUser();showToast('Sesión cerrada','success');}
+// ---- AUTH (Supabase Auth) ----
+const TURNSTILE_SITE_KEY='0x4AAAAAADz25-J0D3Hikm6F';
+let currentUser=null;   // {id,email,name,whatsapp,confirmed} or null
+let _tsWidgetId=null;    // Turnstile widget id
+let _tsToken='';         // last Turnstile token
+
+async function initAuth(){
+  if(!db){updateNavUser();return;}
+  try{const {data:{session}}=await db.auth.getSession();await applySession(session);}catch(e){updateNavUser();}
+  db.auth.onAuthStateChange((event,s)=>{
+    if(event==='PASSWORD_RECOVERY'){showSetPassword();return;}
+    applySession(s);
+  });
+}
+
+async function applySession(session){
+  if(session&&session.user){
+    const u=session.user;
+    let prof={};
+    try{const {data}=await db.from('profiles').select('name,whatsapp,email').eq('id',u.id).maybeSingle();if(data)prof=data;}catch(e){}
+    const meta=u.user_metadata||{};
+    currentUser={id:u.id,email:u.email,name:prof.name||meta.name||'',whatsapp:prof.whatsapp||meta.whatsapp||'',confirmed:!!(u.email_confirmed_at||u.confirmed_at)};
+  }else{currentUser=null;}
+  updateNavUser();
+}
+function loadSession(){/* replaced by initAuth() */}
+
+async function logout(){try{await db.auth.signOut();}catch(e){}currentUser=null;updateNavUser();showToast('Sesión cerrada','success');}
+
 function updateNavUser(){
   const el=document.getElementById('navUser');if(!el)return;
   if(currentUser){
-    el.innerHTML=`<div class="user-tag"><div class="user-dot"></div><span>${esc(currentUser.name.split(' ')[0])}</span> · <span style="cursor:pointer;color:var(--muted);" onclick="logout()">salir</span></div>`;
+    const first=(currentUser.name||currentUser.email||'').split(' ')[0];
+    el.innerHTML=`<div class="user-tag"><div class="user-dot"></div><span style="cursor:pointer;" onclick="showAccount()">${esc(first)}</span> · <span style="cursor:pointer;color:var(--muted);" onclick="logout()">salir</span></div>`;
   }else{
-    el.innerHTML=`<button class="nav-reg" onclick="showRegisterPrompt()">Registrarse</button>`;
+    el.innerHTML=`<button class="nav-reg" onclick="showAuthModal('login')">Ingresar</button>`;
   }
 }
 
-// ---- REGISTER ----
-let pendingUser=null;
-let verificationToken=null;
+// ---- Turnstile ("no soy robot") ----
+function renderTurnstile(containerId){
+  _tsToken='';_tsWidgetId=null;
+  if(!window.turnstile){return;}
+  try{_tsWidgetId=window.turnstile.render('#'+containerId,{sitekey:TURNSTILE_SITE_KEY,callback:t=>{_tsToken=t;},'error-callback':()=>{_tsToken='';},'expired-callback':()=>{_tsToken='';}});}catch(e){}
+}
+function resetTurnstile(){try{if(window.turnstile&&_tsWidgetId!==null)window.turnstile.reset(_tsWidgetId);}catch(e){}_tsToken='';}
 
-function showRegisterPrompt(returnToPiece){
+// ---- AUTH MODAL (login / signup / forgot) ----
+function showAuthModal(mode,returnToPiece){
   currentAuctionPiece=returnToPiece||currentAuctionPiece||null;
-  document.getElementById('am-name').textContent='Registrate para pujar';
-  document.getElementById('am-meta').textContent='Solo necesitás tu nombre, WhatsApp y email';
   document.getElementById('curTopBox').style.display='none';
-  document.getElementById('modalContent').innerHTML=renderRegStep1();
+  document.getElementById('am-name').textContent=mode==='signup'?'Crear cuenta':mode==='forgot'?'Recuperar contraseña':'Ingresar';
+  document.getElementById('am-meta').textContent=mode==='signup'?'Registrate para pujar':mode==='forgot'?'Te enviamos un enlace por email':'Con tu email y contraseña';
+  document.getElementById('modalContent').innerHTML=mode==='signup'?renderSignup():mode==='forgot'?renderForgot():renderLogin();
+  document.getElementById('bidModal').classList.add('open');
+  if(mode!=='forgot')setTimeout(()=>renderTurnstile('tsBox'),60);
+}
+
+function renderLogin(){
+  return`<div class="reg-box">
+    <div class="field-row"><label class="field-label">EMAIL</label><input class="field-input" id="authEmail" type="email" placeholder="ej: maria@gmail.com" maxlength="100"></div>
+    <div class="field-row"><label class="field-label">CONTRASEÑA</label><input class="field-input" id="authPass" type="password" placeholder="••••••••"></div>
+    <div id="tsBox" style="margin:8px 0;"></div>
+    <div class="bid-msg" id="authMsg"></div>
+    <button class="reg-submit" onclick="logIn()">INGRESAR</button>
+    <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:11px;">
+      <span style="color:var(--muted);cursor:pointer;" onclick="showAuthModal('forgot')">Olvidé mi contraseña</span>
+      <span style="color:var(--gold);cursor:pointer;" onclick="showAuthModal('signup')">Crear cuenta →</span>
+    </div>
+  </div>`;
+}
+
+function renderSignup(){
+  return`<div class="reg-box">
+    <div class="field-row"><label class="field-label">TU NOMBRE</label><input class="field-input" id="suName" placeholder="ej: María García" maxlength="60"></div>
+    <div class="field-row"><label class="field-label">WHATSAPP (solo números)</label><input class="field-input" id="suPhone" type="tel" placeholder="ej: 88001234" maxlength="20"></div>
+    <div class="field-row"><label class="field-label">EMAIL</label><input class="field-input" id="suEmail" type="email" placeholder="ej: maria@gmail.com" maxlength="100"></div>
+    <div class="field-row"><label class="field-label">CONTRASEÑA</label><input class="field-input" id="suPass" type="password" placeholder="mínimo 8 caracteres"></div>
+    <div class="field-row"><label class="field-label">CONFIRMAR CONTRASEÑA</label><input class="field-input" id="suPass2" type="password" placeholder="repetí la contraseña"></div>
+    <div class="terms-row">
+      <input type="checkbox" class="terms-check" id="suTerms">
+      <label for="suTerms" class="terms-text">Leí y acepto los <a href="terminos.html" target="_blank" style="color:var(--gold);text-decoration:underline;">Términos y Condiciones</a>. Si gano tengo <strong style="color:var(--cream);">24 horas</strong> para pagar.</label>
+    </div>
+    <div id="tsBox" style="margin:8px 0;"></div>
+    <div class="bid-msg" id="authMsg"></div>
+    <button class="reg-submit" onclick="signUp()">CREAR CUENTA</button>
+    <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--muted);">¿Ya tenés cuenta? <span style="color:var(--gold);cursor:pointer;" onclick="showAuthModal('login')">Ingresá</span></div>
+  </div>`;
+}
+
+function renderForgot(){
+  return`<div class="reg-box">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Poné tu email y te mandamos un enlace para crear una contraseña nueva.</div>
+    <div class="field-row"><label class="field-label">EMAIL</label><input class="field-input" id="authEmail" type="email" placeholder="ej: maria@gmail.com" maxlength="100"></div>
+    <div class="bid-msg" id="authMsg"></div>
+    <button class="reg-submit" onclick="forgotPassword()">ENVIAR ENLACE</button>
+    <div style="text-align:center;margin-top:10px;font-size:11px;"><span style="color:var(--gold);cursor:pointer;" onclick="showAuthModal('login')">← Volver a ingresar</span></div>
+  </div>`;
+}
+
+async function signUp(){
+  const name=document.getElementById('suName').value.trim();
+  const phone=document.getElementById('suPhone').value.trim();
+  const email=document.getElementById('suEmail').value.trim();
+  const pass=document.getElementById('suPass').value;
+  const pass2=document.getElementById('suPass2').value;
+  const terms=document.getElementById('suTerms').checked;
+  const msg=document.getElementById('authMsg');
+  const set=t=>{msg.textContent=t;msg.className='bid-msg err';};
+  if(!name){set('Poné tu nombre');return;}
+  if(!phone||phone.length<7||!/^\d+$/.test(phone)){set('Poné tu WhatsApp (solo números)');return;}
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){set('Poné un email válido');return;}
+  if(!pass||pass.length<8){set('La contraseña debe tener al menos 8 caracteres');return;}
+  if(pass!==pass2){set('Las contraseñas no coinciden');return;}
+  if(!terms){set('Tenés que aceptar los términos');return;}
+  if(!_tsToken){set('Completá el "no soy robot"');return;}
+  msg.textContent='Creando cuenta...';msg.className='bid-msg ok';
+  const btn=document.querySelector('.reg-submit');if(btn)btn.disabled=true;
+  try{
+    const{error}=await db.auth.signUp({email,password:pass,options:{data:{name,whatsapp:phone},captchaToken:_tsToken}});
+    if(error)throw error;
+    document.getElementById('modalContent').innerHTML=`<div class="reg-box" style="text-align:center;">
+      <div style="font-size:38px;margin-bottom:8px;">📧</div>
+      <div style="font-size:15px;color:var(--cream);margin-bottom:8px;">¡Casi listo, ${esc(name.split(' ')[0])}!</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;">Te enviamos un email a <span style="color:var(--gold);">${esc(email)}</span>. Tocá el enlace para confirmar tu cuenta y ya vas a poder pujar.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px;">Revisá spam si no llega en unos minutos.</div>
+      <button class="reg-submit" style="margin-top:16px;" onclick="showAuthModal('login')">Ya confirmé — ingresar</button>
+    </div>`;
+  }catch(e){set(e.message&&/already/i.test(e.message)?'Ese email ya tiene cuenta — probá ingresar':(e.message||'No se pudo crear la cuenta'));if(btn)btn.disabled=false;resetTurnstile();}
+}
+
+async function logIn(){
+  const email=document.getElementById('authEmail').value.trim();
+  const pass=document.getElementById('authPass').value;
+  const msg=document.getElementById('authMsg');
+  const set=t=>{msg.textContent=t;msg.className='bid-msg err';};
+  if(!email||!pass){set('Poné tu email y contraseña');return;}
+  if(!_tsToken){set('Completá el "no soy robot"');return;}
+  msg.textContent='Ingresando...';msg.className='bid-msg ok';
+  const btn=document.querySelector('.reg-submit');if(btn)btn.disabled=true;
+  try{
+    const{data,error}=await db.auth.signInWithPassword({email,password:pass,options:{captchaToken:_tsToken}});
+    if(error)throw error;
+    await applySession(data.session);
+    closeModal('bidModal');
+    showToast(`¡Hola ${(currentUser.name||email).split(' ')[0]}! 🎉`,'success');
+    if(currentAuctionPiece)setTimeout(()=>openBidModal(currentAuctionPiece),300);
+  }catch(e){set(/invalid login/i.test(e.message||'')?'Email o contraseña incorrectos':(/not confirmed/i.test(e.message||'')?'Confirmá tu email primero (revisá tu correo)':(e.message||'No se pudo ingresar')));if(btn)btn.disabled=false;resetTurnstile();}
+}
+
+async function forgotPassword(){
+  const email=document.getElementById('authEmail').value.trim();
+  const msg=document.getElementById('authMsg');
+  if(!email){msg.textContent='Poné tu email';msg.className='bid-msg err';return;}
+  msg.textContent='Enviando...';msg.className='bid-msg ok';
+  try{
+    const{error}=await db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/'});
+    if(error)throw error;
+    msg.textContent='Listo — revisá tu email para crear una contraseña nueva.';msg.className='bid-msg ok';
+  }catch(e){msg.textContent=e.message||'No se pudo enviar';msg.className='bid-msg err';}
+}
+
+// ---- SET NEW PASSWORD (after clicking the recovery link) ----
+function showSetPassword(){
+  document.getElementById('curTopBox').style.display='none';
+  document.getElementById('am-name').textContent='Nueva contraseña';
+  document.getElementById('am-meta').textContent='Elegí una contraseña nueva';
+  document.getElementById('modalContent').innerHTML=`<div class="reg-box">
+    <div class="field-row"><label class="field-label">NUEVA CONTRASEÑA</label><input class="field-input" id="npPass" type="password" placeholder="mínimo 8 caracteres"></div>
+    <div class="field-row"><label class="field-label">CONFIRMAR</label><input class="field-input" id="npPass2" type="password" placeholder="repetí la contraseña"></div>
+    <div class="bid-msg" id="authMsg"></div>
+    <button class="reg-submit" onclick="setNewPassword()">GUARDAR CONTRASEÑA</button>
+  </div>`;
   document.getElementById('bidModal').classList.add('open');
 }
+async function setNewPassword(){
+  const p=document.getElementById('npPass').value,p2=document.getElementById('npPass2').value;
+  const msg=document.getElementById('authMsg');
+  if(!p||p.length<8){msg.textContent='Mínimo 8 caracteres';msg.className='bid-msg err';return;}
+  if(p!==p2){msg.textContent='No coinciden';msg.className='bid-msg err';return;}
+  try{const{error}=await db.auth.updateUser({password:p});if(error)throw error;closeModal('bidModal');showToast('Contraseña actualizada ✓','success');}
+  catch(e){msg.textContent=e.message||'No se pudo guardar';msg.className='bid-msg err';}
+}
 
-function renderRegStep1(){
-  return`<div class="reg-box">
-    <div class="reg-box-title">PASO 1 DE 2 — TUS DATOS</div>
-    <div class="field-row"><label class="field-label">TU NOMBRE</label><input class="field-input" id="regName" placeholder="ej: María García" maxlength="60"></div>
-    <div class="field-row"><label class="field-label">WHATSAPP (solo números)</label><input class="field-input" id="regPhone" placeholder="ej: 88001234" maxlength="20" type="tel"></div>
-    <div class="field-row"><label class="field-label">EMAIL</label><input class="field-input" id="regEmail" placeholder="ej: maria@gmail.com" maxlength="80" type="email"></div>
-    <div class="terms-row">
-      <input type="checkbox" class="terms-check" id="regTerms">
-      <label for="regTerms" class="terms-text">Leí y acepto los <a href="terminos.html" target="_blank" style="color:var(--gold);text-decoration:underline;">Términos y Condiciones</a>. Si gano tengo <strong style="color:var(--cream);">24 horas</strong> para pagar.</label>
+// ---- MI CUENTA (perfil + historial + ganadas) ----
+async function showAccount(){
+  if(!currentUser){showAuthModal('login');return;}
+  document.getElementById('curTopBox').style.display='none';
+  document.getElementById('am-name').textContent='Mi cuenta';
+  document.getElementById('am-meta').textContent=esc(currentUser.email);
+  document.getElementById('modalContent').innerHTML=`
+    <div class="reg-box">
+      <div class="reg-box-title">MIS DATOS</div>
+      <div class="field-row"><label class="field-label">NOMBRE</label><input class="field-input" id="acName" maxlength="60" value="${esc(currentUser.name)}"></div>
+      <div class="field-row"><label class="field-label">WHATSAPP</label><input class="field-input" id="acPhone" type="tel" maxlength="20" value="${esc(currentUser.whatsapp)}"></div>
+      <div class="field-row"><label class="field-label">EMAIL</label><input class="field-input" id="acEmail" type="email" maxlength="100" value="${esc(currentUser.email)}"></div>
+      <div class="bid-msg" id="acMsg"></div>
+      <button class="reg-submit" onclick="saveProfile()">GUARDAR CAMBIOS</button>
     </div>
-    <div class="bid-msg" id="regMsg"></div>
-    <button class="reg-submit" onclick="sendVerificationCode()">ENVIAR CÓDIGO DE VERIFICACIÓN →</button>
-  </div>`;
+    <div class="reg-box" style="margin-top:12px;">
+      <div class="reg-box-title">MIS PUJAS</div>
+      <div id="acHistory" style="font-size:12px;color:var(--muted);">Cargando...</div>
+    </div>`;
+  document.getElementById('bidModal').classList.add('open');
+  loadMyBids();
 }
 
-function renderRegStep2(email){
-  return`<div class="reg-box">
-    <div class="reg-box-title">PASO 2 DE 2 — VERIFICÁ TU EMAIL</div>
-    <div style="font-size:13px;color:var(--cream);margin-bottom:6px;">Te enviamos un código a:</div>
-    <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--gold);margin-bottom:16px;">${esc(email)}</div>
-    <div class="field-row">
-      <label class="field-label">CÓDIGO DE 6 DÍGITOS</label>
-      <input class="field-input" id="verifyCode" placeholder="ej: 483920" maxlength="6" type="number" style="font-size:24px;letter-spacing:8px;text-align:center;">
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">⏳ El código expira en 10 minutos · Revisá spam si no llega</div>
-    <div class="bid-msg" id="verifyMsg"></div>
-    <button class="reg-submit" id="verifyBtn" onclick="verifyCode()">VERIFICAR Y CREAR CUENTA</button>
-    <button onclick="document.getElementById('modalContent').innerHTML=renderRegStep1()" style="width:100%;margin-top:8px;padding:10px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;border-radius:2px;">← VOLVER</button>
-  </div>`;
-}
-
-async function sendVerificationCode(){
-  const name=document.getElementById('regName').value.trim();
-  const phone=document.getElementById('regPhone').value.trim();
-  const email=document.getElementById('regEmail').value.trim();
-  const terms=document.getElementById('regTerms').checked;
-  const msg=document.getElementById('regMsg');
-  if(!name){msg.textContent='Poné tu nombre';msg.className='bid-msg err';return;}
-  if(!phone||phone.length<7){msg.textContent='Poné tu número de WhatsApp';msg.className='bid-msg err';return;}
-  if(!/^\d+$/.test(phone)){msg.textContent='Solo números en WhatsApp, sin guiones';msg.className='bid-msg err';return;}
-  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Poné un email válido';msg.className='bid-msg err';return;}
-  if(!terms){msg.textContent='Tenés que aceptar los términos';msg.className='bid-msg err';return;}
-  msg.textContent='Enviando código...';msg.className='bid-msg ok';
-  const btn=document.querySelector('.reg-submit');if(btn)btn.disabled=true;
-  pendingUser={name,phone,email};
+async function saveProfile(){
+  const name=document.getElementById('acName').value.trim();
+  const phone=document.getElementById('acPhone').value.trim();
+  const email=document.getElementById('acEmail').value.trim();
+  const msg=document.getElementById('acMsg');
+  if(!name||!phone||!/^\d+$/.test(phone)){msg.textContent='Nombre y WhatsApp (solo números) son obligatorios';msg.className='bid-msg err';return;}
+  msg.textContent='Guardando...';msg.className='bid-msg ok';
   try{
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),15000);
-    const res=await fetch('/send-verification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email}),signal:controller.signal});
-    clearTimeout(timeout);
-    const data=await res.json();
-    if(res.status===429){msg.textContent=data.error;msg.className='bid-msg err';if(btn)btn.disabled=false;return;}
-    if(!res.ok||!data.success)throw new Error(data.error||'Error');
-    verificationToken=data.token;
-    document.getElementById('modalContent').innerHTML=renderRegStep2(email);
-  }catch(e){msg.textContent='Error de conexión con el servidor. Intentá de nuevo en unos segundos.';msg.className='bid-msg err';console.error('Verification error:',e);if(btn)btn.disabled=false;}
+    const{error}=await db.from('profiles').update({name,whatsapp:phone,updated_at:new Date().toISOString()}).eq('id',currentUser.id);
+    if(error)throw error;
+    if(email&&email!==currentUser.email){await db.auth.updateUser({email});msg.textContent='Datos guardados. Para cambiar el email, confirmá el enlace que te enviamos.';}
+    else{msg.textContent='Datos guardados ✓';}
+    msg.className='bid-msg ok';
+    currentUser.name=name;currentUser.whatsapp=phone;updateNavUser();
+  }catch(e){msg.textContent=e.message||'No se pudo guardar';msg.className='bid-msg err';}
 }
 
-async function verifyCode(){
-  const input=document.getElementById('verifyCode').value.trim();
-  const msg=document.getElementById('verifyMsg');
-  const btn=document.getElementById('verifyBtn');
-  if(!input||input.length!==6){msg.textContent='Ingresá el código de 6 dígitos';msg.className='bid-msg err';return;}
-  if(!verificationToken||!pendingUser){msg.textContent='Error — volvé al paso anterior';msg.className='bid-msg err';return;}
-  if(btn)btn.disabled=true;msg.textContent='Verificando...';msg.className='bid-msg ok';
+async function loadMyBids(){
+  const el=document.getElementById('acHistory');if(!el)return;
   try{
-    const res=await fetch('/send-verification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',email:pendingUser.email,token:verificationToken,code:input})});
-    const data=await res.json();
-    if(!res.ok||!data.verified){msg.textContent=data.error||'Código incorrecto';msg.className='bid-msg err';if(btn)btn.disabled=false;return;}
-    const user={...pendingUser,verified:true,createdAt:new Date().toISOString()};
-    saveSession(user);verificationToken=null;pendingUser=null;
-    closeModal('bidModal');
-    showToast(`¡Bienvenida ${user.name.split(' ')[0]}! Ya podés pujar 🎉`,'success');
-    if(currentAuctionPiece)setTimeout(()=>openBidModal(currentAuctionPiece),400);
-  }catch(e){msg.textContent='Error de conexión. Intentá de nuevo.';msg.className='bid-msg err';if(btn)btn.disabled=false;}
+    const{data,error}=await db.from('bids').select('piece_name,amount,created_at,piece_id').eq('user_id',currentUser.id).order('created_at',{ascending:false});
+    if(error)throw error;
+    if(!data||!data.length){el.innerHTML='Todavía no hiciste ninguna puja.';return;}
+    // Which pieces did I win? top bid on a closed/sold piece
+    const wonIds=new Set();
+    for(const p of AUCTION_PIECES){
+      if(p.status==='sold'||p.status==='closed'){
+        const d=bidData[p.id];
+        if(d&&d.top_bidder&&d.top_bid){
+          const mine=data.find(b=>b.piece_id===p.id&&b.amount===d.top_bid);
+          if(mine)wonIds.add(p.id);
+        }
+      }
+    }
+    el.innerHTML=data.map(b=>{
+      const won=wonIds.has(b.piece_id);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div><div style="color:var(--cream);font-size:12px;">${esc(b.piece_name||'Pieza')}</div><div style="font-size:10px;color:var(--muted);">${new Date(b.created_at).toLocaleString('es-CR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
+        <div style="text-align:right;"><div style="font-family:'Space Mono',monospace;color:var(--gold);font-size:12px;">${fmt(b.amount)}</div>${won?'<div style="font-size:9px;color:#22c55e;">🏆 GANADA</div>':''}</div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='No se pudo cargar el historial.';}
 }
 
 // ---- BID MODAL ----
@@ -721,16 +869,25 @@ function openBidModal(id){
     document.getElementById('modalContent').innerHTML=`<div style="padding:14px;background:rgba(90,82,72,.15);border:1px solid var(--border);border-radius:2px;text-align:center;">
       <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;margin-bottom:8px;">⏳ SUBASTA AÚN NO ABRE</div>
       <div style="font-size:13px;color:var(--cream);margin-bottom:12px;">Estás en modo preview. La subasta abre el viernes 6pm.</div>
-      ${!currentUser?`<button class="reg-submit" onclick="closeModal('bidModal');showRegisterPrompt()">Registrate para pujar cuando abra</button>`:'<div style="font-size:12px;color:var(--gold);font-family:Space Mono,monospace;">✓ Ya estás registrado — volvé cuando abra la subasta</div>'}
+      ${!currentUser?`<button class="reg-submit" onclick="closeModal('bidModal');showAuthModal('login')">Ingresá o creá tu cuenta</button>`:'<div style="font-size:12px;color:var(--gold);font-family:Space Mono,monospace;">✓ Ya tenés cuenta — volvé cuando abra la subasta</div>'}
     </div>`;
   }else if(state==='ended'){
     document.getElementById('modalContent').innerHTML=`<div style="text-align:center;padding:14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;">SUBASTA CERRADA</div>`;
   }else{
-    if(!currentUser){showRegisterPrompt(id);return;}
+    if(!currentUser){showAuthModal('login',id);return;}
+    if(!currentUser.confirmed){
+      document.getElementById('modalContent').innerHTML=`<div style="padding:14px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);border-radius:2px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:6px;">📧</div>
+        <div style="font-size:13px;color:var(--cream);margin-bottom:6px;">Confirmá tu email para pujar</div>
+        <div style="font-size:12px;color:var(--muted);">Te enviamos un enlace a ${esc(currentUser.email)}. Tocalo y volvé a ingresar.</div>
+      </div>`;
+      document.getElementById('bidModal').classList.add('open');
+      return;
+    }
     document.getElementById('modalContent').innerHTML=`<div class="bid-form">
       <label>OFERTANDO COMO</label>
       <div style="font-size:13px;color:var(--gold);font-family:'Space Mono',monospace;margin-bottom:12px;padding:8px 10px;background:rgba(201,168,76,.06);border-radius:2px;display:flex;justify-content:space-between;align-items:center;">
-        <span>${esc(currentUser.name)} · ${esc(currentUser.phone)}</span>
+        <span>${esc(currentUser.name)} · ${esc(currentUser.whatsapp)}</span>
         <span style="font-size:9px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);padding:2px 7px;border-radius:999px;">✓ VERIFICADO</span>
       </div>
       <label>TU OFERTA (₡)</label>
@@ -751,7 +908,7 @@ async function submitBid(){
   const msg=document.getElementById('bidMsg');
   const btn=document.getElementById('bidSubmit');
   if(!amount||amount<100){msg.textContent='Ingresá un monto válido';msg.className='bid-msg err';return;}
-  const rateKey=currentUser.phone+'_'+currentAuctionPiece;
+  const rateKey=currentUser.id+'_'+currentAuctionPiece;
   if(Date.now()-(lastBidTime[rateKey]||0)<10000){msg.textContent='Esperá unos segundos antes de volver a ofertar';msg.className='bid-msg err';return;}
   const items=AUCTION_PIECES;
   const item=items.find(i=>i.id===currentAuctionPiece);
@@ -761,7 +918,7 @@ async function submitBid(){
   btn.disabled=true;btn.textContent='ENVIANDO...';msg.textContent='';
   if(!db){msg.textContent='Conectá Supabase para activar las ofertas.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
   try{
-    const{data,error}=await db.rpc('place_bid',{p_piece_id:currentAuctionPiece,p_piece_name:item.name,p_bidder_name:currentUser.name,p_bidder_phone:currentUser.phone,p_bidder_email:currentUser.email,p_amount:amount});
+    const{data,error}=await db.rpc('place_bid_auth',{p_piece_id:currentAuctionPiece,p_amount:amount});
     if(error)throw error;
     if(data&&data.ok===false){msg.textContent=data.error||'No se pudo registrar la oferta';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
     lastBidTime[rateKey]=Date.now();
@@ -819,7 +976,7 @@ function subscribeToInventory(){
 // ---- INIT ----
 async function bootstrap(){
   await Promise.all([fetchConfig(),fetchInventory()]);
-  loadSession();
+  await initAuth();
   renderPage();
   renderShop();
   loadBids();

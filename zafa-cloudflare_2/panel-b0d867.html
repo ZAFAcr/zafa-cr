@@ -442,6 +442,7 @@ let db = null;
 let shopItems = [];
 let auctionItems = [];
 let allBids = [];
+let allProfiles = [];
 let bidSummary = {}; // pieceId -> {top3: [{amount, name, phone}], count}
 
 // ---- SUPABASE PIECES MAPPING ----
@@ -844,6 +845,7 @@ async function loadBids() {
   try {
     const r = await adminApi('load');
     allBids = r.bids || [];
+    allProfiles = r.profiles || [];
 
     // Build top3 per piece — deduplicate by bidder name (keep their highest bid)
     bidSummary = {};
@@ -924,7 +926,7 @@ function updateStats() {
   document.querySelectorAll('.tab')[0].textContent = `TIENDA (${shopItems.filter(i=>i.status==='tienda').length})`;
   document.querySelectorAll('.tab')[1].textContent = `SUBASTA (${auctionItems.filter(i=>i.status==='active').length})`;
   document.querySelectorAll('.tab')[2].textContent = `OFERTAS (${allBids.length})`;
-  const userCount = (() => { try { const s=localStorage.getItem('zafa_users'); return s?JSON.parse(s).length:0; } catch(e){return 0;} })();
+  const userCount = allProfiles.length;
   document.querySelectorAll('.tab')[3].textContent = `👥 USUARIOS (${userCount})`;
 }
 
@@ -1071,17 +1073,20 @@ function showCfgMsg(text, type) {
 function renderUsersTable() {
   const q = document.getElementById('usersSearch')?.value.toLowerCase()||'';
 
-  // Build user map from all bids
+  // Start from all registered profiles (so people who signed up but never bid still show)
   const userMap = {};
+  allProfiles.forEach(p => {
+    userMap['u:'+p.id] = {
+      name: p.name||'—', phone: p.whatsapp||'—', email: p.email||'—',
+      firstBid: p.created_at, bids: 0, won: 0,
+    };
+  });
+  // Layer in bids — match to the account by user_id, else group legacy bids by phone/name
   allBids.forEach(b => {
-    const key = b.bidder_phone || b.bidder_name;
+    const key = b.user_id ? 'u:'+b.user_id : ('p:'+(b.bidder_phone||b.bidder_name));
     if(!userMap[key]) userMap[key] = {
-      name: b.bidder_name,
-      phone: b.bidder_phone||'—',
-      email: b.bidder_email||'—',
-      firstBid: b.bid_time||b.created_at,
-      bids: 0,
-      won: 0,
+      name: b.bidder_name||'—', phone: b.bidder_phone||'—', email: b.bidder_email||'—',
+      firstBid: b.bid_time||b.created_at, bids: 0, won: 0,
     };
     userMap[key].bids++;
   });
@@ -1091,12 +1096,12 @@ function renderUsersTable() {
     const s = bidSummary[pieceId];
     if(!s || !s.top3 || !s.top3[0]) return;
     const winner = s.top3[0];
-    const winnerKey = winner.phone || winner.name;
-    if(userMap[winnerKey]) userMap[winnerKey].won++;
+    const hit = Object.values(userMap).find(u => (winner.phone && u.phone===winner.phone) || u.name===winner.name);
+    if(hit) hit.won++;
   });
 
   let users = Object.values(userMap).filter(u =>
-    u.name.toLowerCase().includes(q) || u.phone.includes(q)
+    (u.name||'').toLowerCase().includes(q) || (u.phone||'').includes(q)
   );
 
   // Sort by most bids

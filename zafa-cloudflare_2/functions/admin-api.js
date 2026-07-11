@@ -30,15 +30,17 @@ export async function onRequest(context) {
 
   try {
     if (action === 'load') {
-      const [pcs, cfg, bids] = await Promise.all([
+      const [pcs, cfg, bids, profs] = await Promise.all([
         rest('pieces?select=*&order=created_at.asc'),
         rest('site_config?id=eq.current&select=*'),
         rest('bids?select=*&order=amount.desc'),
+        rest('profiles?select=*&order=created_at.asc'),
       ]);
       return j({
         pieces: await pcs.json(),
         config: (await cfg.json())[0] || null,
         bids: await bids.json(),
+        profiles: await profs.json(),
       });
     }
     if (action === 'savePiece') {
