@@ -239,7 +239,7 @@
   </div>
   <div class="steps">
     <div class="step"><div class="step-n">01</div><div class="step-t">Creás tu cuenta</div><div class="step-b">Solo necesitás tu nombre, WhatsApp y email. Sin tarjetas ni datos sensibles.</div></div>
-    <div class="step"><div class="step-n">02</div><div class="step-t">Explorás las piezas</div><div class="step-b">48 horas de preview antes de que abra la subasta. Planeá tu estrategia.</div></div>
+    <div class="step"><div class="step-n">02</div><div class="step-t">Explorás las piezas</div><div class="step-b">Tenés 48 horas de preview antes de que abra la subasta. Planeá tu estrategia.</div></div>
     <div class="step"><div class="step-n">03</div><div class="step-t">Ofertás en vivo</div><div class="step-b">La subasta abre por 48 horas. Las ofertas se actualizan en tiempo real para todos.</div></div>
     <div class="step"><div class="step-n">04</div><div class="step-t">Pagás por SINPE</div><div class="step-b">Si ganás tenés 24hrs para pagar. Sin pago, la pieza pasa al siguiente ofertante.</div></div>
   </div>
@@ -288,9 +288,10 @@
 <footer>
   <div>
     <div class="foot-logo">ZAF<em>A</em></div>
-    <div class="foot-tag">Latinoamérica · Vintage Y2K</div>
+    <div class="foot-tag">Latinoamérica ···</div>
   </div>
   <div class="foot-links">
+    <a href="#" onclick="event.preventDefault();showAccount()">Mi cuenta</a>
     <a href="#auction" id="footerAuction">Subasta</a>
     <a href="#shop" id="footerShop" style="display:none;">Tienda</a>
     <a href="#how">¿Cómo funciona?</a>
@@ -360,7 +361,7 @@ function esc(str){const d=document.createElement('div');d.appendChild(document.c
 // ---- DROP CONFIG ----
 function loadDropConfig(){
   const c=LIVE_CONFIG||{};
-  const defDesc='🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲';
+  const defDesc='🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único. 🗲';
   return{
     previewStart:c.preview_start?new Date(c.preview_start):new Date('2099-01-01T18:00:00-06:00'),
     auctionStart:c.auction_start?new Date(c.auction_start):new Date('2099-01-03T18:00:00-06:00'),
@@ -395,7 +396,7 @@ function renderPage(){
   if(state==='before'){
     hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)}</div><h1 class="hero-title">ALGO<br><span class="outline">VIENE</span><span class="accent">PRONTO.</span></h1><p class="hero-sub">${esc(cfg.heroDesc)}</p><div class="hero-btns"><a class="btn btn-gold" href="https://www.instagram.com/zafa.cr/" target="_blank" rel="noopener noreferrer">Seguir en Instagram →</a></div>`;
     heroSide.style.display='none';
-    ticker.textContent='★ PRÓXIMAMENTE ★ ZAFA ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ SEGUINOS EN @ZAFA.CR ★ PRÓXIMAMENTE ★ ZAFA ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ SEGUINOS EN @ZAFA.CR ★   ';
+    ticker.textContent='🗲 PRÓXIMAMENTE 🗲 ZAFA 🗲 VINTAGE Y2K 🗲 LATINOAMÉRICA 🗲 SEGUINOS EN @ZAFA.CR 🗲 PRÓXIMAMENTE 🗲 ZAFA 🗲 VINTAGE Y2K 🗲 LATINOAMÉRICA 🗲 SEGUINOS EN @ZAFA.CR 🗲   ';
     banner.innerHTML=`<div class="preview-banner"><div><div class="preview-label">⏳ PRÓXIMAMENTE</div><div class="live-title">El drop llega pronto</div><div class="live-sub">Seguinos en @zafa.cr para que te avisemos</div></div></div>`;
     subtitle.textContent='Próximamente';
   } else if(state==='preview'){
@@ -637,7 +638,7 @@ function updateNavUser(){
     const first=(currentUser.name||currentUser.email||'').split(' ')[0];
     el.innerHTML=`<div class="user-tag"><div class="user-dot"></div><span style="cursor:pointer;" onclick="showAccount()">${esc(first)}</span> · <span style="cursor:pointer;color:var(--muted);" onclick="logout()">salir</span></div>`;
   }else{
-    el.innerHTML=`<button class="nav-reg" onclick="showAuthModal('login')">Ingresar</button>`;
+    el.innerHTML=`<span onclick="showAuthModal('login')" style="cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--muted);margin-right:14px;">Ingresar</span><button class="nav-reg" onclick="showAuthModal('signup')">Crear cuenta</button>`;
   }
 }
 
@@ -798,6 +799,8 @@ async function showAccount(){
       <div class="field-row"><label class="field-label">NOMBRE</label><input class="field-input" id="acName" maxlength="60" value="${esc(currentUser.name)}"></div>
       <div class="field-row"><label class="field-label">WHATSAPP</label><input class="field-input" id="acPhone" type="tel" maxlength="20" value="${esc(currentUser.whatsapp)}"></div>
       <div class="field-row"><label class="field-label">EMAIL</label><input class="field-input" id="acEmail" type="email" maxlength="100" value="${esc(currentUser.email)}"></div>
+      <div class="field-row"><label class="field-label">CONTRASEÑA ACTUAL (para confirmar los cambios)</label><input class="field-input" id="acPass" type="password" placeholder="tu contraseña"></div>
+      <div id="tsBoxAcc" style="margin:8px 0;"></div>
       <div class="bid-msg" id="acMsg"></div>
       <button class="reg-submit" onclick="saveProfile()">GUARDAR CAMBIOS</button>
     </div>
@@ -806,6 +809,7 @@ async function showAccount(){
       <div id="acHistory" style="font-size:12px;color:var(--muted);">Cargando...</div>
     </div>`;
   document.getElementById('bidModal').classList.add('open');
+  setTimeout(()=>renderTurnstile('tsBoxAcc'),60);
   loadMyBids();
 }
 
@@ -813,9 +817,18 @@ async function saveProfile(){
   const name=document.getElementById('acName').value.trim();
   const phone=document.getElementById('acPhone').value.trim();
   const email=document.getElementById('acEmail').value.trim();
+  const pass=document.getElementById('acPass').value;
   const msg=document.getElementById('acMsg');
-  if(!name||!phone||!/^\d+$/.test(phone)){msg.textContent='Nombre y WhatsApp (solo números) son obligatorios';msg.className='bid-msg err';return;}
-  msg.textContent='Guardando...';msg.className='bid-msg ok';
+  const err=t=>{msg.textContent=t;msg.className='bid-msg err';};
+  if(!name||!phone||!/^\d+$/.test(phone)){err('Nombre y WhatsApp (solo números) son obligatorios');return;}
+  if(!pass){err('Ingresá tu contraseña para confirmar los cambios');return;}
+  if(!_tsToken){err('Completá el "no soy robot"');return;}
+  msg.textContent='Verificando...';msg.className='bid-msg ok';
+  // Confirmá con la contraseña antes de aplicar cualquier cambio
+  try{
+    const{error:authErr}=await db.auth.signInWithPassword({email:currentUser.email,password:pass,options:{captchaToken:_tsToken}});
+    if(authErr){err('Contraseña incorrecta');resetTurnstile();return;}
+  }catch(e){err('No se pudo verificar la contraseña');resetTurnstile();return;}
   try{
     const{error}=await db.from('profiles').update({name,whatsapp:phone,updated_at:new Date().toISOString()}).eq('id',currentUser.id);
     if(error)throw error;
@@ -823,7 +836,8 @@ async function saveProfile(){
     else{msg.textContent='Datos guardados ✓';}
     msg.className='bid-msg ok';
     currentUser.name=name;currentUser.whatsapp=phone;updateNavUser();
-  }catch(e){msg.textContent=e.message||'No se pudo guardar';msg.className='bid-msg err';}
+    document.getElementById('acPass').value='';resetTurnstile();
+  }catch(e){err(e.message||'No se pudo guardar');}
 }
 
 async function loadMyBids(){
