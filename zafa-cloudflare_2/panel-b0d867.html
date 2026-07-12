@@ -34,6 +34,7 @@
   .topbar-logo { font-family:'Space Mono',monospace; font-size:16px; letter-spacing:.2em; color:var(--gold); }
   .topbar-right { display:flex; gap:12px; align-items:center; }
   .topbar-badge { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.1em; background:rgba(201,168,76,.12); color:var(--gold); padding:4px 10px; border-radius:999px; border:1px solid rgba(201,168,76,.3); }
+  .topbar-badge.sub { background:rgba(196,82,42,.12); color:#e0794f; border:1px solid rgba(196,82,42,.35); }
   .logout-btn { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.1em; padding:6px 14px; background:none; border:1px solid var(--border); color:var(--muted); cursor:pointer; border-radius:2px; transition:all .2s; }
   .logout-btn:hover { border-color:var(--rust); color:var(--rust); }
   .main { padding:32px; max-width:1400px; margin:0 auto; }
@@ -191,7 +192,8 @@
   <div class="topbar">
     <div class="topbar-logo">ZAFA ADMIN</div>
     <div class="topbar-right">
-      <div class="topbar-badge" id="topbarStats">Cargando...</div>
+      <div class="topbar-badge" id="topbarShop">Cargando...</div>
+      <div class="topbar-badge sub" id="topbarAuction"></div>
       <button class="logout-btn" onclick="logout()">SALIR</button>
     </div>
   </div>
@@ -1079,7 +1081,9 @@ function updateStats() {
   document.getElementById('st-sold').textContent = sold;
   document.getElementById('st-bids').textContent = totalBids;
   document.getElementById('st-revenue').textContent = fmt(revenue);
-  document.getElementById('topbarStats').textContent = `${avail} disponibles · ${sold} vendidas`;
+  const aucActive = auctionItems.filter(i=>i.status==='active').length;
+  document.getElementById('topbarShop').textContent = `🏷 TIENDA · ${avail} disp · ${sold} vend`;
+  document.getElementById('topbarAuction').textContent = `🔨 SUBASTA · ${aucActive} activas · ${totalBids} ofertas · ${fmt(revenue)}`;
   // Update tab labels
   document.querySelectorAll('.tab')[0].textContent = `TIENDA (${shopItems.filter(i=>i.status==='tienda').length})`;
   document.querySelectorAll('.tab')[1].textContent = `SUBASTA (${auctionItems.filter(i=>i.status==='active').length})`;

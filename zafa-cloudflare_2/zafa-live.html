@@ -125,6 +125,12 @@
   .pv-ofertar{width:100%;padding:16px;background:var(--gold);color:var(--black);border:none;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.1em;border-radius:3px;cursor:pointer;margin-top:12px;animation:pvpulse 2.4s infinite;}
   .pv-ofertar:hover{background:var(--cream);}
   .pv-ofertar:disabled{background:var(--border);color:var(--muted);animation:none;cursor:not-allowed;}
+  .pv-arena.winning{border-color:rgba(34,197,94,.45);background:linear-gradient(135deg,rgba(34,197,94,.12),transparent 62%);box-shadow:0 0 0 1px rgba(34,197,94,.15),0 8px 40px -12px rgba(34,197,94,.4);}
+  .pv-ofertar.winning{background:transparent;color:#22c55e;border:1px solid rgba(34,197,94,.55);animation:none;cursor:default;}
+  .pv-ofertar.winning:hover{background:rgba(34,197,94,.08);}
+  .pv-ofertar.recover{background:var(--rust);color:var(--cream);animation:pvpulse 1.6s infinite;}
+  .pv-defend{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.05em;color:var(--muted);margin-top:8px;text-align:center;line-height:1.5;}
+  .pv-defend b{color:#22c55e;}
   .pv-feed{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.04em;margin-top:10px;min-height:14px;}
   .ainfo{padding:12px 14px;border-top:1px solid var(--border);}
   .aname{font-size:13px;font-weight:500;color:var(--cream);margin-bottom:3px;}
@@ -509,17 +515,17 @@ function renderShop(filter='all'){
   document.getElementById('shopCount').textContent=filtered.length+' PIEZAS';
   document.getElementById('shopGrid').innerHTML=filtered.map((item,i)=>{
     const imgHtml=item.imageUrl?`<img src="${esc(item.imageUrl)}" alt="${esc(item.name)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">`:`<span style="font-size:52px;opacity:.4;">${item.emoji||emojis[i%emojis.length]}</span>`;
-    return`<div class="pcard" onclick="openPiece(${JSON.stringify(item.id)})">
+    return`<div class="pcard" onclick="openPiece('${esc(item.id)}')">
       <div class="pimg" style="position:relative;">
         ${item.status==='last'?'<span class="pbadge pb-last">ÚLTIMO</span>':'<span class="pbadge pb-new">NUEVO</span>'}
         ${imgHtml}
       </div>
-      <div class="pcard-ov"><button class="btn btn-gold" style="font-size:10px;" onclick="event.stopPropagation();openPiece(${JSON.stringify(item.id)})">Comprar ahora</button></div>
+      <div class="pcard-ov"><button class="btn btn-gold" style="font-size:10px;" onclick="event.stopPropagation();openPiece('${esc(item.id)}')">Comprar ahora</button></div>
       <div class="pinfo">
         <div class="pname">${esc(item.name)}</div>
         <div class="pmeta">TALLA ${esc(item.size)} · EXCELENTE ESTADO</div>
         <div class="pprice">${fmt(item.price)}</div>
-        <button class="pbuy" onclick="event.stopPropagation();openPiece(${JSON.stringify(item.id)})">COMPRAR → WHATSAPP</button>
+        <button class="pbuy" onclick="event.stopPropagation();openPiece('${esc(item.id)}')">COMPRAR → WHATSAPP</button>
       </div>
     </div>`;
   }).join('');
@@ -568,9 +574,9 @@ function renderAuction(){
     const imgHtml=item.imageUrl?`<img src="${esc(item.imageUrl)}" alt="${esc(item.name)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">`:`<span style="font-size:52px;opacity:.35;">${item.emoji||emojis[i%emojis.length]}</span>`;
     const badge=isActive?`<span class="bid-count-badge" id="bc-${esc(item.id)}">${d.bid_count} OFERTAS</span>`:`<span class="preview-badge">PREVIEW</span>`;
     const hot=isActive&&HOT_PIECES.has(item.id)?`<span class="hot-badge">⚡ MÁS PUJADA</span>`:'';
-    const bidBtn=isActive?`<button class="bid-btn" onclick="event.stopPropagation();openPiece(${JSON.stringify(item.id)})">OFERTAR AHORA →</button>`:`<button class="bid-btn" disabled>SUBASTA AÚN NO ABRE</button>`;
+    const bidBtn=isActive?`<button class="bid-btn" onclick="event.stopPropagation();openPiece('${esc(item.id)}')">OFERTAR AHORA →</button>`:`<button class="bid-btn" disabled>SUBASTA AÚN NO ABRE</button>`;
     const peopleTxt=isActive&&d.bidders>0?`${d.bidders} ${d.bidders===1?'persona':'personas'} pujando`:(isActive?'sé el primero':'⏳ pronto');
-    return`<div class="acard" onclick="openPiece(${JSON.stringify(item.id)})">
+    return`<div class="acard" onclick="openPiece('${esc(item.id)}')">
       <div class="pimg" style="background:#130f0c;position:relative;">
         ${badge}${hot}${imgHtml}
       </div>
@@ -927,13 +933,13 @@ let PV_id=null, PV_imgs=[], PV_idx=0;
 function openPiece(id){ if(location.hash!=='#pieza/'+id){ location.hash='#pieza/'+id; } else { renderPieceView(id); } }
 function closePiece(){
   if(location.hash.indexOf('#pieza/')===0){ if(history.length>1){history.back();} else {location.hash='';} }
-  else { document.getElementById('pieceView').classList.remove('open'); document.body.style.overflow=''; }
+  else { document.getElementById('pieceView').classList.remove('open'); document.body.style.overflow=''; if(window._pvcd)clearInterval(window._pvcd); if(window._pvpoll)clearInterval(window._pvpoll); }
 }
 window.addEventListener('hashchange', handleHash);
 function handleHash(){
   const m=location.hash.match(/^#pieza\/(.+)$/);
   if(m){ renderPieceView(decodeURIComponent(m[1])); }
-  else { document.getElementById('pieceView').classList.remove('open'); document.body.style.overflow=''; if(window._pvcd)clearInterval(window._pvcd); PV_id=null; }
+  else { document.getElementById('pieceView').classList.remove('open'); document.body.style.overflow=''; if(window._pvcd)clearInterval(window._pvcd); if(window._pvpoll)clearInterval(window._pvpoll); PV_id=null; }
 }
 
 function renderPieceView(id){
@@ -976,7 +982,7 @@ function renderArena(id, isAuction){
   const inc=(LIVE_CONFIG&&LIVE_CONFIG.bid_increment)||500;
   const mine=(currentUser&&d.top_user_id&&d.top_user_id===currentUser.id);
   const subTxt=mine?'🏆 Vas ganando':(d.bidders>0?`🔥 ${d.bidders} ${d.bidders===1?'persona':'personas'} pujando · ${d.bid_count} ofertas`:'sé el primero en ofertar');
-  const head=`<div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--muted);margin-bottom:2px;">${d.bid_count>0?'OFERTA MÁS ALTA':'PRECIO BASE'}</div>
+  const head=`<div id="pvLbl" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--muted);margin-bottom:2px;">${d.bid_count>0?'OFERTA MÁS ALTA':'PRECIO BASE'}</div>
     <div class="pv-topbid" id="pvTop">${fmt(d.top_bid)}</div>
     <div style="font-size:11px;color:${mine?'#22c55e':'var(--muted)'};margin-top:4px;" id="pvSub">${subTxt}</div>`;
   if(state==='ended'){ el.innerHTML=`<div class="pv-arena">${head}<div style="margin-top:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;">SUBASTA CERRADA</div></div>`; return; }
@@ -994,11 +1000,40 @@ function renderArena(id, isAuction){
     <input type="number" id="bidAmount" class="field-input" placeholder="mínimo ${fmt(d.bid_count>0?d.top_bid+inc:d.top_bid)}" step="${inc}" style="width:100%;margin-bottom:8px;">
     <input type="number" id="bidMax" class="field-input" placeholder="puja máxima (opcional) — pujamos por vos" step="${inc}" style="width:100%;">
     <button class="pv-ofertar" id="bidSubmit" onclick="submitBid()">OFERTAR</button>
+    <div class="pv-defend" id="pvDefend"></div>
     <div class="bid-msg" id="bidMsg" style="margin-top:8px;"></div>
     <div class="pv-feed" id="pvFeed"></div>
   </div>`;
   const cfg=loadDropConfig();
   startPvCountdown(state==='early'?cfg.auctionStart:cfg.auctionEnd);
+  applyArenaState(id);
+  if(state==='active')startPvPoll(id);
+}
+
+// Centraliza el estado visual de la arena (ganando / superado / neutro) a partir de bidData
+function applyArenaState(id){
+  const arenaEl=document.querySelector('#pvArena .pv-arena'); if(!arenaEl)return;
+  const item=AUCTION_PIECES.find(i=>i.id===id); if(!item)return;
+  const d=bidData[id]||{top_bid:item.base_price,bid_count:0,bidders:0};
+  const inc=(LIVE_CONFIG&&LIVE_CONFIG.bid_increment)||500;
+  const leading=!!(currentUser&&d.top_user_id&&d.top_user_id===currentUser.id);
+  const nextMin=d.bid_count>0?d.top_bid+inc:d.top_bid;
+  const lbl=document.getElementById('pvLbl'); if(lbl)lbl.textContent=d.bid_count>0?'OFERTA MÁS ALTA':'PRECIO BASE';
+  const top=document.getElementById('pvTop'); if(top)top.textContent=fmt(d.top_bid);
+  const sub=document.getElementById('pvSub');
+  if(sub){ sub.textContent=leading?'🏆 Vas ganando':(d.bidders>0?`🔥 ${d.bidders} ${d.bidders===1?'persona pujando':'personas pujando'} · ${d.bid_count} ofertas`:'sé el primero en ofertar'); sub.style.color=leading?'#22c55e':'var(--muted)'; }
+  arenaEl.classList.toggle('winning',leading);
+  const amt=document.getElementById('bidAmount'); if(amt){ amt.value=''; amt.placeholder='mínimo '+fmt(nextMin); }
+  const defend=document.getElementById('pvDefend');
+  if(defend)defend.innerHTML=leading?'Alguien puede superarte en cualquier momento. <b>Subí tu puja máxima</b> y pujamos por vos hasta ese tope.':'';
+  const btn=document.getElementById('bidSubmit');
+  if(btn&&!btn.disabled){
+    btn.classList.remove('winning','recover');
+    if(leading){ btn.textContent='🏆 VAS GANANDO'; btn.classList.add('winning'); }
+    else if(d.bid_count>0){ btn.textContent='RECUPERAR — desde '+fmt(nextMin); btn.classList.add('recover'); }
+    else { btn.textContent='OFERTAR'; }
+  }
+  window._pvWasLeading=leading;
 }
 
 function startPvCountdown(target){
@@ -1007,14 +1042,41 @@ function startPvCountdown(target){
   upd(); window._pvcd=setInterval(upd,1000);
 }
 
+// Respaldo: refresca las pujas de la pieza abierta cada 15s por si el WebSocket se cae en algún cliente
+function startPvPoll(id){
+  if(window._pvpoll)clearInterval(window._pvpoll);
+  if(!db)return;
+  window._pvpoll=setInterval(async()=>{
+    if(PV_id!==id || !document.getElementById('pieceView').classList.contains('open')){ clearInterval(window._pvpoll); return; }
+    try{
+      const {data,error}=await db.from('public_bids').select('amount,bidder_name,user_id').eq('piece_id',id).order('amount',{ascending:false});
+      if(error||!data)return;
+      const cur=bidData[id]||{};
+      const set=new Set(data.map(b=>b.bidder_name));
+      const top=data[0];
+      const next={top_bid:top?top.amount:(cur.top_bid||0),top_bidder:top?top.bidder_name:null,top_user_id:top?top.user_id:null,bid_count:data.length,bidders:set.size,_set:set};
+      const changed=(next.top_bid!==cur.top_bid)||(next.top_user_id!==cur.top_user_id)||(next.bid_count!==cur.bid_count);
+      if(changed){ bidData[id]=next; applyArenaState(id); if(document.getElementById('myBidsView').classList.contains('open'))renderMyBids(); }
+    }catch(e){}
+  },15000);
+}
+
 // Live update the open piece view when a bid arrives
 function pvOnBid(bid){
   if(PV_id!==bid.piece_id || !document.getElementById('pieceView').classList.contains('open')) return;
-  const top=document.getElementById('pvTop'); const sub=document.getElementById('pvSub'); const feed=document.getElementById('pvFeed');
-  if(top){ top.textContent=fmt(bid.amount); top.classList.add('bump'); setTimeout(()=>top.classList.remove('bump'),350); goldBurst(top); }
-  const d=bidData[bid.piece_id]||{}; const mine=(currentUser&&d.top_user_id&&d.top_user_id===currentUser.id);
-  if(sub){ sub.textContent=mine?'🏆 Vas ganando':(d.bidders>0?`🔥 ${d.bidders} ${d.bidders===1?'persona':'personas'} pujando · ${d.bid_count} ofertas`:''); sub.style.color=mine?'#22c55e':'var(--muted)'; }
+  const top=document.getElementById('pvTop');
+  const wasLeading=!!(currentUser&&window._pvWasLeading);
+  if(top){ top.classList.add('bump'); setTimeout(()=>top.classList.remove('bump'),350); goldBurst(top); }
+  const feed=document.getElementById('pvFeed');
   if(feed){ feed.textContent=`⚡ ${esc(bid.bidder_name)} pujó ${fmt(bid.amount)}`; }
+  const nowLeading=!!(currentUser&&(bidData[bid.piece_id]||{}).top_user_id===currentUser.id);
+  // Si acabás de ser superado en vivo, avisá fuerte y ofrecé recuperar
+  if(wasLeading&&!nowLeading){
+    const msg=document.getElementById('bidMsg');
+    if(msg){ msg.innerHTML='⚡ <strong>Te superaron.</strong> Recuperá tu pieza.'; msg.className='bid-msg err'; }
+  }
+  window._pvWasLeading=nowLeading;
+  applyArenaState(bid.piece_id);
 }
 
 // ---- MIS PUJAS (live board across all pieces) ----
@@ -1123,6 +1185,9 @@ async function submitBid(){
   const maxVal=(maxEl&&maxEl.value)?parseInt(maxEl.value):null;
   const msg=document.getElementById('bidMsg');
   const btn=document.getElementById('bidSubmit');
+  const leadingNow=!!(currentUser&&(bidData[currentAuctionPiece]||{}).top_user_id===currentUser.id);
+  // Si ya vas ganando y tocás sin poner monto, guiá a blindar con la puja máxima
+  if(leadingNow&&!amount){const mx=document.getElementById('bidMax');if(mx)mx.focus();msg.innerHTML='Ya vas ganando 🏆 — para blindarla ofrecé un monto mayor con tu <strong>puja máxima</strong>.';msg.className='bid-msg ok';return;}
   if(!amount||amount<100){msg.textContent='Ingresá un monto válido';msg.className='bid-msg err';return;}
   if(maxVal&&maxVal<amount){msg.textContent='Tu puja máxima no puede ser menor a tu oferta';msg.className='bid-msg err';return;}
   const rateKey=currentUser.id+'_'+currentAuctionPiece;
@@ -1130,22 +1195,33 @@ async function submitBid(){
   const item=AUCTION_PIECES.find(i=>i.id===currentAuctionPiece);
   const cur=bidData[currentAuctionPiece]||{top_bid:item.base_price,bid_count:0};
   if(cur.bid_count>0 && amount<=cur.top_bid){msg.textContent=`Tu oferta debe ser mayor a ${fmt(cur.top_bid)}`;msg.className='bid-msg err';return;}
-  btn.disabled=true;btn.textContent='ENVIANDO...';msg.textContent='';
-  if(!db){msg.textContent='Sin conexión.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
+  btn.disabled=true;btn.textContent='ENVIANDO...';btn.classList.remove('winning','recover');msg.textContent='';
+  if(!db){msg.textContent='Sin conexión.';msg.className='bid-msg err';btn.disabled=false;applyArenaState(currentAuctionPiece);return;}
   try{
     const{data,error}=await db.rpc('place_bid_auth',{p_piece_id:currentAuctionPiece,p_amount:amount,p_max:maxVal});
     if(error)throw error;
-    if(data&&data.ok===false){msg.textContent=data.error||'No se pudo registrar la oferta';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
+    if(data&&data.ok===false){msg.textContent=data.error||'No se pudo registrar la oferta';msg.className='bid-msg err';btn.disabled=false;applyArenaState(currentAuctionPiece);return;}
     lastBidTime[rateKey]=Date.now();
+    // Actualización optimista: reflejá el nuevo precio y estado sin esperar el realtime
+    const bd=bidData[currentAuctionPiece]||{};
+    if(!bd._set)bd._set=new Set();
+    bd._set.add(currentUser.name||currentUser.email||'vos');
+    bidData[currentAuctionPiece]={...bd,top_bid:data.top_bid,bid_count:(bd.bid_count||0)+1,top_user_id:data.you_lead?currentUser.id:bd.top_user_id,bidders:Math.max(bd.bidders||0,bd._set.size),_set:bd._set};
     if(data&&data.you_lead){
       msg.innerHTML=`✓ ¡Vas ganando! Va en <strong>${fmt(data.top_bid)}</strong>.${data.extended?' <span style="color:var(--rust);">⏱ Se extendió el cierre.</span>':''}`;msg.className='bid-msg ok';
     }else{
       msg.innerHTML=`Otra persona tiene una puja máxima más alta. Va en <strong>${fmt(data.top_bid)}</strong> — subí tu puja máxima para recuperarla.`;msg.className='bid-msg err';
     }
     const maxi=document.getElementById('bidMax');if(maxi)maxi.value='';
-    btn.textContent=(data&&data.you_lead)?'¡VAS GANANDO!':'OFERTAR DE NUEVO';
-    setTimeout(()=>{btn.disabled=false;btn.textContent='OFERTAR AHORA';},2500);
-  }catch(e){msg.textContent='Error al enviar. Verificá tu conexión.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';}
+    // Animá el número grande y sincronizá toda la arena
+    const topEl=document.getElementById('pvTop'); if(topEl){topEl.classList.add('bump');setTimeout(()=>topEl.classList.remove('bump'),350);goldBurst(topEl);}
+    if(document.getElementById('myBidsView').classList.contains('open'))renderMyBids();
+    // Bloqueo breve anti doble-clic; el label correcto lo pone applyArenaState al soltar
+    btn.classList.remove('winning','recover');
+    if(data.you_lead){btn.textContent='🏆 VAS GANANDO';btn.classList.add('winning');}else{btn.textContent='ENVIANDO...';}
+    setTimeout(()=>{btn.disabled=false;applyArenaState(currentAuctionPiece);},2500);
+    applyArenaState(currentAuctionPiece);
+  }catch(e){msg.textContent='Error al enviar. Verificá tu conexión.';msg.className='bid-msg err';btn.disabled=false;applyArenaState(currentAuctionPiece);}
 }
 
 // ---- BUY MODAL ----
