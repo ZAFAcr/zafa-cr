@@ -262,6 +262,22 @@
           <div class="form-group"><label class="form-label">PRECIO BASE (₡)</label><input class="form-input" type="number" id="a-price" placeholder="ej: 6000"></div>
           <div class="form-group"><label class="form-label">EMOJI (opcional)</label><input class="form-input" id="a-emoji" placeholder="ej: 🧥" maxlength="4"></div>
         </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">ESTADO</label>
+            <select class="form-select" id="a-condition">
+              <option value="">—</option>
+              <option value="Nuevo con etiqueta">Nuevo con etiqueta</option>
+              <option value="Excelente">Excelente</option>
+              <option value="Muy bueno">Muy bueno</option>
+              <option value="Bueno con detalles">Bueno con detalles</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">MEDIDAS</label><input class="form-input" id="a-measurements" placeholder="ej: Pecho 52cm · Largo 68cm"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">HISTORIA / POR QUÉ ES ESPECIAL (opcional)</label>
+          <textarea class="form-input" id="a-story" rows="2" placeholder="ej: Bomber Y2K original, estampado raro, difícil de encontrar" style="resize:vertical;font-family:'DM Sans',sans-serif;"></textarea>
+        </div>
         <div class="form-group" style="margin-bottom:14px;">
           <label class="form-label">FOTO DE LA PIEZA</label>
           <div class="img-upload-area" id="a-drop">
@@ -446,10 +462,10 @@ let allProfiles = [];
 let bidSummary = {}; // pieceId -> {top3: [{amount, name, phone}], count}
 
 // ---- SUPABASE PIECES MAPPING ----
-function rowToShop(r)    { return {id:r.id, name:r.name, cat:r.cat, size:r.size, price:r.price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, dropNum:r.drop_num}; }
-function rowToAuction(r) { return {id:r.id, name:r.name, cat:r.cat, size:r.size, base_price:r.base_price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, dropNum:r.drop_num}; }
-function shopToRow(it)   { return {id:it.id, type:'shop',    name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, price:it.price,            status:it.status, image_url:it.imageUrl||null, drop_num:it.dropNum||1, updated_at:new Date().toISOString()}; }
-function auctionToRow(it){ return {id:it.id, type:'auction', name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, base_price:it.base_price, status:it.status, image_url:it.imageUrl||null, drop_num:it.dropNum||1, updated_at:new Date().toISOString()}; }
+function rowToShop(r)    { return {id:r.id, name:r.name, cat:r.cat, size:r.size, price:r.price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, dropNum:r.drop_num, measurements:r.measurements, condition:r.condition, story:r.story}; }
+function rowToAuction(r) { return {id:r.id, name:r.name, cat:r.cat, size:r.size, base_price:r.base_price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, dropNum:r.drop_num, measurements:r.measurements, condition:r.condition, story:r.story}; }
+function shopToRow(it)   { return {id:it.id, type:'shop',    name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, price:it.price,            status:it.status, image_url:it.imageUrl||null, drop_num:it.dropNum||1, measurements:it.measurements||null, condition:it.condition||null, story:it.story||null, updated_at:new Date().toISOString()}; }
+function auctionToRow(it){ return {id:it.id, type:'auction', name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, base_price:it.base_price, status:it.status, image_url:it.imageUrl||null, drop_num:it.dropNum||1, measurements:it.measurements||null, condition:it.condition||null, story:it.story||null, updated_at:new Date().toISOString()}; }
 
 // All privileged reads/writes go through /admin-api, authenticated with the admin token
 async function adminApi(action, extra = {}) {
@@ -713,13 +729,16 @@ async function addAuctionItem() {
   const size = document.getElementById('a-size').value.trim().substring(0, 10);
   const base_price = parseInt(document.getElementById('a-price').value);
   const emoji = document.getElementById('a-emoji').value.trim().substring(0, 4) || '🧥';
+  const condition = document.getElementById('a-condition').value || null;
+  const measurements = document.getElementById('a-measurements').value.trim().substring(0,120) || null;
+  const story = document.getElementById('a-story').value.trim().substring(0,300) || null;
   if (!name || !size || !base_price) { showToast('Completá nombre, talla y precio base','err'); return; }
   if (base_price < 100 || base_price > 9999999) { showToast('Precio base inválido','err'); return; }
   if (!['Jacket','Hoodie','Jeans','Camiseta','Otro'].includes(cat)) { showToast('Categoría inválida','err'); return; }
   showToast('Subiendo imagen...','ok');
   const imageUrl = await uploadImage('a-img', 'auction');
   const id = 'a' + Date.now();
-  const item = {id, name, cat, size, base_price, emoji, status:'active', imageUrl};
+  const item = {id, name, cat, size, base_price, emoji, status:'active', imageUrl, condition, measurements, story};
   try { await dbUpsertPiece(auctionToRow(item)); } catch(e) { return; }
   auctionItems.push(item);
   saveAuctionItems();
@@ -728,6 +747,9 @@ async function addAuctionItem() {
   document.getElementById('a-size').value='';
   document.getElementById('a-price').value='';
   document.getElementById('a-emoji').value='';
+  document.getElementById('a-condition').value='';
+  document.getElementById('a-measurements').value='';
+  document.getElementById('a-story').value='';
   clearImg('a-img','a-preview');
   showToast(`${esc(name)} agregada a subasta ✓`,'ok');
 }

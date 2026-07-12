@@ -353,7 +353,7 @@ function getWA(){return (LIVE_CONFIG && LIVE_CONFIG.whatsapp) ? LIVE_CONFIG.what
 let db=null;
 try{const{createClient}=supabase;if(SUPABASE_URL!=='YOUR_SUPABASE_URL')db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(e){console.warn('Supabase init failed',e);}
 
-function mapPiece(r){return {id:r.id,type:r.type,name:r.name,cat:r.cat,size:r.size,emoji:r.emoji,price:r.price,base_price:r.base_price,status:r.status,imageUrl:r.image_url};}
+function mapPiece(r){return {id:r.id,type:r.type,name:r.name,cat:r.cat,size:r.size,emoji:r.emoji,price:r.price,base_price:r.base_price,status:r.status,imageUrl:r.image_url,measurements:r.measurements,condition:r.condition,story:r.story};}
 
 // ---- SANITIZE ----
 function esc(str){const d=document.createElement('div');d.appendChild(document.createTextNode(String(str||'')));return d.innerHTML;}
@@ -372,16 +372,20 @@ function loadDropConfig(){
     heroDesc:c.hero_desc||defDesc,
     endedText:c.ended_text||'Estamos notificando a los ganadores.',
     whatsapp:c.whatsapp||'50685019010',
+    earlyAccessHours:(c.early_access_hours!=null?c.early_access_hours:9),
   };
 }
 
 function getDropState(){
   const cfg=loadDropConfig();const now=new Date();
+  const earlyStart=new Date(cfg.auctionStart.getTime()-(cfg.earlyAccessHours||9)*3600000);
   if(now<cfg.previewStart)return{state:'before',cfg};
-  if(now<cfg.auctionStart)return{state:'preview',cfg};
+  if(now<earlyStart)return{state:'preview',cfg};
+  if(now<cfg.auctionStart)return{state:'early',cfg};
   if(now<cfg.auctionEnd)return{state:'active',cfg};
   return{state:'ended',cfg};
 }
+function canBid(state){return state==='active'||state==='early';}
 
 // ---- RENDER PAGE STATE ----
 function renderPage(){
@@ -406,13 +410,16 @@ function renderPage(){
     banner.innerHTML=`<div class="preview-banner"><div><div class="preview-label">👁 PREVIEW — La subasta aún no abre</div><div class="live-title">Explorá las piezas antes que todos</div><div class="live-sub">La subasta abre el viernes 6pm · Registrate para pujar</div></div><div class="countdown"><div class="cd-unit"><span class="cd-n" id="cdH">--</span><span class="cd-l">HRS</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdM">--</span><span class="cd-l">MIN</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdS">--</span><span class="cd-l">SEG</span></div></div></div>`;
     subtitle.textContent='Preview activo · La subasta abre pronto';
     startCountdown(cfg.auctionStart);
-  } else if(state==='active'){
-    hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)} · Drop #${cfg.dropNum} 🔥</div><h1 class="hero-title">SUBASTA<br><span class="outline">EN</span><span class="accent">VIVO.</span></h1><p class="hero-sub">${esc(cfg.heroDesc)}</p><div class="hero-btns"><a href="#auction" class="btn btn-gold">Ofertar ahora →</a></div>`;
+  } else if(state==='active'||state==='early'){
+    const early=(state==='early');
+    hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)} · Drop #${cfg.dropNum} ${early?'🔑':'🔥'}</div><h1 class="hero-title">${early?'ACCESO<br><span class="outline">ANTICI</span><span class="accent">PADO.</span>':'SUBASTA<br><span class="outline">EN</span><span class="accent">VIVO.</span>'}</h1><p class="hero-sub">${esc(cfg.heroDesc)}</p><div class="hero-btns"><a href="#auction" class="btn btn-gold">${early?'Pujá antes que todos →':'Ofertar ahora →'}</a></div>`;
     heroSide.style.display='flex';
-    ticker.textContent=`★ SUBASTA EN VIVO ★ DROP #${cfg.dropNum} ★ 48HRS ★ OFERTAS EN TIEMPO REAL ★ VINTAGE Y2K ★ LATINOAMÉRICA ★ SUBASTA EN VIVO ★ DROP #${cfg.dropNum} ★   `;
-    banner.innerHTML=`<div class="live-banner"><div><div class="live-label"><div class="live-dot"></div>SUBASTA EN VIVO</div><div class="live-title">Drop #${cfg.dropNum} · Cierra ${cfg.auctionEnd.toLocaleString('es-CR',{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div><div class="live-sub">Ganador recibe WhatsApp · 24hrs para pagar por SINPE</div></div><div class="countdown"><div class="cd-unit"><span class="cd-n" id="cdH">--</span><span class="cd-l">HRS</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdM">--</span><span class="cd-l">MIN</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdS">--</span><span class="cd-l">SEG</span></div></div></div>`;
-    subtitle.textContent='Subasta activa · Ofertas en tiempo real';
-    startCountdown(cfg.auctionEnd);
+    ticker.textContent=early?`★ ACCESO ANTICIPADO ★ PUJÁ ANTES QUE TODOS ★ DROP #${cfg.dropNum} ★ SOLO REGISTRADOS ★ VINTAGE Y2K ★ ACCESO ANTICIPADO ★   `:`★ SUBASTA EN VIVO ★ DROP #${cfg.dropNum} ★ 48HRS ★ OFERTAS EN TIEMPO REAL ★ VINTAGE Y2K ★ LATINOAMÉRICA ★   `;
+    banner.innerHTML=early
+      ?`<div class="live-banner"><div><div class="live-label"><div class="live-dot"></div>🔑 ACCESO ANTICIPADO</div><div class="live-title">Pujá antes que el público · Abre para todos ${cfg.auctionStart.toLocaleString('es-CR',{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div><div class="live-sub">Tu ventaja por registrarte temprano · Ganador paga por SINPE en 24hrs</div></div><div class="countdown"><div class="cd-unit"><span class="cd-n" id="cdH">--</span><span class="cd-l">HRS</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdM">--</span><span class="cd-l">MIN</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdS">--</span><span class="cd-l">SEG</span></div></div></div>`
+      :`<div class="live-banner"><div><div class="live-label"><div class="live-dot"></div>SUBASTA EN VIVO</div><div class="live-title">Drop #${cfg.dropNum} · Cierra ${cfg.auctionEnd.toLocaleString('es-CR',{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div><div class="live-sub">Ganador recibe WhatsApp · 24hrs para pagar por SINPE</div></div><div class="countdown"><div class="cd-unit"><span class="cd-n" id="cdH">--</span><span class="cd-l">HRS</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdM">--</span><span class="cd-l">MIN</span></div><div class="cd-sep">:</div><div class="cd-unit"><span class="cd-n" id="cdS">--</span><span class="cd-l">SEG</span></div></div></div>`;
+    subtitle.textContent=early?'Acceso anticipado · Pujá antes que todos':'Subasta activa · Ofertas en tiempo real';
+    startCountdown(early?cfg.auctionStart:cfg.auctionEnd);
   } else {
     hero.innerHTML=`<div class="hero-eyebrow">${esc(cfg.heroTagline)}</div><h1 class="hero-title">GRACIAS<br><span class="outline">POR</span><span class="accent">PUJAR.</span></h1><p class="hero-sub">El Drop #${cfg.dropNum} terminó. ${esc(cfg.endedText)} El próximo drop llega el <strong style="color:var(--gold);">${esc(nextDropStr)}</strong>.</p><div class="hero-btns"><a class="btn btn-gold" href="https://www.instagram.com/zafa.cr/" target="_blank" rel="noopener noreferrer">Seguir en Instagram →</a></div>`;
     heroSide.style.display='none';
@@ -509,7 +516,7 @@ function renderAuction(){
   if(fb)fb.style.display=active.length>0?'flex':'none';
   document.getElementById('auctionCount').textContent=active.length+' PIEZAS';
   const{state}=getDropState();
-  const isActive=state==='active';
+  const isActive=canBid(state);
   const items=AUCTION_FILTER==='all'?active:active.filter(i=>i.cat===AUCTION_FILTER);
   document.getElementById('auctionGrid').innerHTML=items.map((item,i)=>{
     const d=bidData[item.id]||{top_bid:item.base_price,top_bidder:null,bid_count:0,bidders:0};
@@ -898,47 +905,69 @@ function openBidModal(id){
       document.getElementById('bidModal').classList.add('open');
       return;
     }
+    const inc=(LIVE_CONFIG&&LIVE_CONFIG.bid_increment)||500;
+    const fichaHtml=(item.condition||item.measurements||item.story)?`<div style="background:rgba(90,82,72,.12);border:1px solid var(--border);border-radius:2px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--muted);line-height:1.6;">
+        ${item.condition?`<div><span style="color:var(--gold);">Estado:</span> ${esc(item.condition)}</div>`:''}
+        ${item.measurements?`<div><span style="color:var(--gold);">Medidas:</span> ${esc(item.measurements)}</div>`:''}
+        ${item.story?`<div style="margin-top:4px;">${esc(item.story)}</div>`:''}
+      </div>`:'';
     document.getElementById('modalContent').innerHTML=`<div class="bid-form">
+      ${fichaHtml}
       <label>OFERTANDO COMO</label>
       <div style="font-size:13px;color:var(--gold);font-family:'Space Mono',monospace;margin-bottom:12px;padding:8px 10px;background:rgba(201,168,76,.06);border-radius:2px;display:flex;justify-content:space-between;align-items:center;">
         <span>${esc(currentUser.name)} · ${esc(currentUser.whatsapp)}</span>
         <span style="font-size:9px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);padding:2px 7px;border-radius:999px;">✓ VERIFICADO</span>
       </div>
       <label>TU OFERTA (₡)</label>
-      <input type="number" id="bidAmount" placeholder="ej: ${d.top_bid+500}" min="${d.top_bid+1}" step="500">
+      <div style="display:flex;gap:6px;margin:4px 0 8px;">
+        <button type="button" onclick="quickBid(${inc})" style="flex:1;font-family:'Space Mono',monospace;font-size:11px;padding:8px;background:transparent;border:1px solid var(--border);color:var(--cream);border-radius:2px;cursor:pointer;">+${inc}</button>
+        <button type="button" onclick="quickBid(${inc*2})" style="flex:1;font-family:'Space Mono',monospace;font-size:11px;padding:8px;background:transparent;border:1px solid var(--border);color:var(--cream);border-radius:2px;cursor:pointer;">+${inc*2}</button>
+        <button type="button" onclick="quickBid(${inc*4})" style="flex:1;font-family:'Space Mono',monospace;font-size:11px;padding:8px;background:transparent;border:1px solid var(--border);color:var(--cream);border-radius:2px;cursor:pointer;">+${inc*4}</button>
+      </div>
+      <input type="number" id="bidAmount" placeholder="mínimo ${fmt(d.bid_count>0?d.top_bid+inc:d.top_bid)}" min="${d.top_bid}" step="${inc}">
+      <label style="margin-top:12px;">PUJA MÁXIMA (opcional)</label>
+      <input type="number" id="bidMax" placeholder="tu tope — pujamos por vos hasta ahí" step="${inc}">
       <button class="bid-submit" id="bidSubmit" onclick="submitBid()">OFERTAR AHORA</button>
       <div class="bid-msg" id="bidMsg"></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;">Al pujar confirmás que tenés 24hrs para pagar si ganás.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;">Con la <strong style="color:var(--cream);">puja máxima</strong>, el sistema puja por vos de a poco hasta tu tope. Al pujar confirmás que tenés 24hrs para pagar si ganás.</div>
     </div>`;
   }
   document.getElementById('bidModal').classList.add('open');
 }
 
+function quickBid(inc){const d=bidData[currentAuctionPiece]||{top_bid:0};const el=document.getElementById('bidAmount');if(el)el.value=(d.top_bid||0)+inc;}
+
 async function submitBid(){
-  if(!currentUser){showToast('Registrate primero','error');return;}
+  if(!currentUser){showToast('Ingresá primero','error');return;}
   const{state}=getDropState();
-  if(state!=='active'){showToast('La subasta no está activa','error');return;}
+  if(!canBid(state)){showToast('La subasta no está activa','error');return;}
   const amount=parseInt(document.getElementById('bidAmount').value);
+  const maxEl=document.getElementById('bidMax');
+  const maxVal=(maxEl&&maxEl.value)?parseInt(maxEl.value):null;
   const msg=document.getElementById('bidMsg');
   const btn=document.getElementById('bidSubmit');
   if(!amount||amount<100){msg.textContent='Ingresá un monto válido';msg.className='bid-msg err';return;}
+  if(maxVal&&maxVal<amount){msg.textContent='Tu puja máxima no puede ser menor a tu oferta';msg.className='bid-msg err';return;}
   const rateKey=currentUser.id+'_'+currentAuctionPiece;
-  if(Date.now()-(lastBidTime[rateKey]||0)<10000){msg.textContent='Esperá unos segundos antes de volver a ofertar';msg.className='bid-msg err';return;}
-  const items=AUCTION_PIECES;
-  const item=items.find(i=>i.id===currentAuctionPiece);
-  const cur=bidData[currentAuctionPiece]||{top_bid:item.base_price};
-  if(amount<=cur.top_bid){msg.textContent=`Tu oferta debe ser mayor a ${fmt(cur.top_bid)}`;msg.className='bid-msg err';return;}
-  if(amount>9999999){msg.textContent='Monto demasiado alto';msg.className='bid-msg err';return;}
+  if(Date.now()-(lastBidTime[rateKey]||0)<8000){msg.textContent='Esperá unos segundos antes de volver a ofertar';msg.className='bid-msg err';return;}
+  const item=AUCTION_PIECES.find(i=>i.id===currentAuctionPiece);
+  const cur=bidData[currentAuctionPiece]||{top_bid:item.base_price,bid_count:0};
+  if(cur.bid_count>0 && amount<=cur.top_bid){msg.textContent=`Tu oferta debe ser mayor a ${fmt(cur.top_bid)}`;msg.className='bid-msg err';return;}
   btn.disabled=true;btn.textContent='ENVIANDO...';msg.textContent='';
-  if(!db){msg.textContent='Conectá Supabase para activar las ofertas.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
+  if(!db){msg.textContent='Sin conexión.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
   try{
-    const{data,error}=await db.rpc('place_bid_auth',{p_piece_id:currentAuctionPiece,p_amount:amount});
+    const{data,error}=await db.rpc('place_bid_auth',{p_piece_id:currentAuctionPiece,p_amount:amount,p_max:maxVal});
     if(error)throw error;
     if(data&&data.ok===false){msg.textContent=data.error||'No se pudo registrar la oferta';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';return;}
     lastBidTime[rateKey]=Date.now();
-    msg.textContent=`¡Oferta de ${fmt(amount)} registrada! Te avisamos si ganás.`;msg.className='bid-msg ok';
-    document.getElementById('bidAmount').value='';btn.textContent='¡OFERTA ENVIADA!';
-    setTimeout(()=>{btn.disabled=false;btn.textContent='OFERTAR AHORA';},3000);
+    if(data&&data.you_lead){
+      msg.innerHTML=`✓ ¡Vas ganando! Va en <strong>${fmt(data.top_bid)}</strong>.${data.extended?' <span style="color:var(--rust);">⏱ Se extendió el cierre.</span>':''}`;msg.className='bid-msg ok';
+    }else{
+      msg.innerHTML=`Otra persona tiene una puja máxima más alta. Va en <strong>${fmt(data.top_bid)}</strong> — subí tu puja máxima para recuperarla.`;msg.className='bid-msg err';
+    }
+    const maxi=document.getElementById('bidMax');if(maxi)maxi.value='';
+    btn.textContent=(data&&data.you_lead)?'¡VAS GANANDO!':'OFERTAR DE NUEVO';
+    setTimeout(()=>{btn.disabled=false;btn.textContent='OFERTAR AHORA';},2500);
   }catch(e){msg.textContent='Error al enviar. Verificá tu conexión.';msg.className='bid-msg err';btn.disabled=false;btn.textContent='OFERTAR AHORA';}
 }
 
