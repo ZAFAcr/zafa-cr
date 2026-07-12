@@ -138,6 +138,42 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- EDIT MODAL -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:500;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card);border:1px solid var(--border);max-width:540px;width:100%;padding:24px;max-height:92vh;overflow-y:auto;border-radius:2px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="add-form-title" style="margin:0;" id="edit-title">EDITAR PIEZA</div>
+      <button onclick="closeEdit()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;font-family:'Space Mono',monospace;">✕</button>
+    </div>
+    <input type="hidden" id="edit-id"><input type="hidden" id="edit-type">
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">NOMBRE</label><input class="form-input" id="edit-name"></div>
+      <div class="form-group"><label class="form-label">CATEGORÍA</label><select class="form-select" id="edit-cat"></select></div>
+      <div class="form-group"><label class="form-label">TALLA</label><input class="form-input" id="edit-size"></div>
+      <div class="form-group"><label class="form-label" id="edit-price-label">PRECIO (₡)</label><input class="form-input" type="number" id="edit-price"></div>
+      <div class="form-group"><label class="form-label">EMOJI</label><input class="form-input" id="edit-emoji" maxlength="4"></div>
+      <div class="form-group"><label class="form-label">ESTADO (venta)</label><select class="form-select" id="edit-status"></select></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">ESTADO PIEZA</label>
+        <select class="form-select" id="edit-condition">
+          <option value="">—</option><option>Nuevo con etiqueta</option><option>Excelente</option><option>Muy bueno</option><option>Bueno con detalles</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">MEDIDAS</label><input class="form-input" id="edit-measurements" placeholder="ej: Pecho 52cm · Largo 68cm"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;"><label class="form-label">HISTORIA / POR QUÉ ES ESPECIAL</label><textarea class="form-input" id="edit-story" rows="2" style="resize:vertical;font-family:'DM Sans',sans-serif;"></textarea></div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">FOTOS (la 1ª es la portada · tocá ✕ para quitar)</label>
+      <div id="edit-gallery" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
+      <div class="img-upload-area" id="edit-drop"><input type="file" accept="image/*" id="edit-img" multiple onchange="previewImg('edit-img','edit-preview')"><div class="img-upload-label">📷 Agregar más fotos (JPG, PNG)</div></div>
+      <div class="img-preview-wrap" id="edit-preview" style="display:none;"><img class="img-preview" id="edit-preview-img" src=""><div><div style="font-size:12px;color:var(--cream);" id="edit-preview-name"></div><button onclick="clearImg('edit-img','edit-preview')" style="font-size:10px;background:none;border:none;color:var(--rust);cursor:pointer;font-family:'Space Mono',monospace;">✕ quitar</button></div></div>
+    </div>
+    <div class="bid-msg" id="editMsg"></div>
+    <button class="add-btn" onclick="saveEdit()">GUARDAR CAMBIOS</button>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
@@ -208,7 +244,7 @@
         <div class="form-group" style="margin-bottom:14px;">
           <label class="form-label">FOTO DE LA PIEZA</label>
           <div class="img-upload-area" id="s-drop">
-            <input type="file" accept="image/*" id="s-img" onchange="previewImg('s-img','s-preview')">
+            <input type="file" accept="image/*" id="s-img" multiple onchange="previewImg('s-img','s-preview')">
             <div class="img-upload-label">📷 Tocá para subir una foto (JPG, PNG)</div>
           </div>
           <div class="img-preview-wrap" id="s-preview" style="display:none;">
@@ -281,7 +317,7 @@
         <div class="form-group" style="margin-bottom:14px;">
           <label class="form-label">FOTO DE LA PIEZA</label>
           <div class="img-upload-area" id="a-drop">
-            <input type="file" accept="image/*" id="a-img" onchange="previewImg('a-img','a-preview')">
+            <input type="file" accept="image/*" id="a-img" multiple onchange="previewImg('a-img','a-preview')">
             <div class="img-upload-label">📷 Tocá para subir una foto (JPG, PNG)</div>
           </div>
           <div class="img-preview-wrap" id="a-preview" style="display:none;">
@@ -419,6 +455,27 @@
           </div>
         </div>
 
+        <div style="margin-top:20px;background:var(--black);border:1px solid var(--border);border-radius:2px;padding:16px;">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--muted);margin-bottom:16px;">⚙ AJUSTES DE SUBASTA</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">ACCESO ANTICIPADO (horas)</label>
+              <input class="form-input" type="number" id="cfg-early" value="9" min="0" max="72">
+              <div style="font-size:11px;color:var(--muted);margin-top:4px;">Horas que los registrados pujan antes que el público</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ANTI-SNIPING (min)</label>
+              <input class="form-input" type="number" id="cfg-antisnipe" value="2" min="0" max="30">
+              <div style="font-size:11px;color:var(--muted);margin-top:4px;">Puja en los últimos X min → el cierre se extiende</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">INCREMENTO DE PUJA (₡)</label>
+              <input class="form-input" type="number" id="cfg-increment" value="500" min="100" step="100">
+              <div style="font-size:11px;color:var(--muted);margin-top:4px;">Salto mínimo y botones rápidos</div>
+            </div>
+          </div>
+        </div>
+
         <div class="bid-msg" id="cfgMsg" style="margin-top:10px;"></div>
       </div>
 
@@ -462,10 +519,11 @@ let allProfiles = [];
 let bidSummary = {}; // pieceId -> {top3: [{amount, name, phone}], count}
 
 // ---- SUPABASE PIECES MAPPING ----
-function rowToShop(r)    { return {id:r.id, name:r.name, cat:r.cat, size:r.size, price:r.price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, dropNum:r.drop_num, measurements:r.measurements, condition:r.condition, story:r.story}; }
-function rowToAuction(r) { return {id:r.id, name:r.name, cat:r.cat, size:r.size, base_price:r.base_price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, dropNum:r.drop_num, measurements:r.measurements, condition:r.condition, story:r.story}; }
-function shopToRow(it)   { return {id:it.id, type:'shop',    name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, price:it.price,            status:it.status, image_url:it.imageUrl||null, drop_num:it.dropNum||1, measurements:it.measurements||null, condition:it.condition||null, story:it.story||null, updated_at:new Date().toISOString()}; }
-function auctionToRow(it){ return {id:it.id, type:'auction', name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, base_price:it.base_price, status:it.status, image_url:it.imageUrl||null, drop_num:it.dropNum||1, measurements:it.measurements||null, condition:it.condition||null, story:it.story||null, updated_at:new Date().toISOString()}; }
+function rowToShop(r)    { return {id:r.id, name:r.name, cat:r.cat, size:r.size, price:r.price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, images:r.images||[], dropNum:r.drop_num, measurements:r.measurements, condition:r.condition, story:r.story}; }
+function rowToAuction(r) { return {id:r.id, name:r.name, cat:r.cat, size:r.size, base_price:r.base_price, emoji:r.emoji, status:r.status, imageUrl:r.image_url, images:r.images||[], dropNum:r.drop_num, measurements:r.measurements, condition:r.condition, story:r.story}; }
+function imagesFor(it)  { const arr=(it.images&&it.images.length)?it.images:(it.imageUrl?[it.imageUrl]:[]); return arr; }
+function shopToRow(it)   { const imgs=imagesFor(it); return {id:it.id, type:'shop',    name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, price:it.price,            status:it.status, image_url:imgs[0]||null, images:imgs, drop_num:it.dropNum||1, measurements:it.measurements||null, condition:it.condition||null, story:it.story||null, updated_at:new Date().toISOString()}; }
+function auctionToRow(it){ const imgs=imagesFor(it); return {id:it.id, type:'auction', name:it.name, cat:it.cat, size:it.size, emoji:it.emoji, base_price:it.base_price, status:it.status, image_url:imgs[0]||null, images:imgs, drop_num:it.dropNum||1, measurements:it.measurements||null, condition:it.condition||null, story:it.story||null, updated_at:new Date().toISOString()}; }
 
 // All privileged reads/writes go through /admin-api, authenticated with the admin token
 async function adminApi(action, extra = {}) {
@@ -481,6 +539,75 @@ async function adminApi(action, extra = {}) {
 }
 async function dbUpsertPiece(row) { await adminApi('savePiece', { row }); }
 async function dbDeletePiece(id)  { await adminApi('deletePiece', { id }); }
+
+// ---- EDIT PIECE ----
+function editPiece(id){
+  let it = auctionItems.find(i=>i.id===id); let type='auction';
+  if(!it){ it = shopItems.find(i=>i.id===id); type='shop'; }
+  if(!it){ showToast('Pieza no encontrada','err'); return; }
+  document.getElementById('edit-id').value = it.id;
+  document.getElementById('edit-type').value = type;
+  document.getElementById('edit-title').textContent = 'EDITAR — ' + it.name;
+  document.getElementById('edit-name').value = it.name||'';
+  document.getElementById('edit-size').value = it.size||'';
+  document.getElementById('edit-emoji').value = it.emoji||'';
+  document.getElementById('edit-price').value = (type==='auction'?it.base_price:it.price)||'';
+  document.getElementById('edit-price-label').textContent = type==='auction'?'PRECIO BASE (₡)':'PRECIO (₡)';
+  document.getElementById('edit-condition').value = it.condition||'';
+  document.getElementById('edit-measurements').value = it.measurements||'';
+  document.getElementById('edit-story').value = it.story||'';
+  const cats = type==='auction'?['Jacket','Hoodie','Jeans','Camiseta','Otro']:['camiseta','hoodie','jeans','jacket','otro'];
+  document.getElementById('edit-cat').innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.getElementById('edit-cat').value = it.cat||cats[0];
+  const stats = type==='auction'?[['active','Activa'],['closed','Cerrada'],['sold','Vendida']]:[['tienda','En tienda'],['last','Último'],['sold','Vendida'],['reserved','Reservada']];
+  document.getElementById('edit-status').innerHTML = stats.map(s=>`<option value="${s[0]}">${s[1]}</option>`).join('');
+  document.getElementById('edit-status').value = it.status||stats[0][0];
+  clearImg('edit-img','edit-preview');
+  editImages = (it.images&&it.images.length)?[...it.images]:(it.imageUrl?[it.imageUrl]:[]);
+  renderEditThumbs();
+  document.getElementById('editMsg').textContent='';
+  document.getElementById('editModal').style.display='flex';
+}
+function closeEdit(){ document.getElementById('editModal').style.display='none'; }
+let editImages = [];
+function renderEditThumbs(){
+  const g=document.getElementById('edit-gallery'); if(!g)return;
+  g.innerHTML = editImages.length ? editImages.map((u,i)=>`
+    <div style="position:relative;">
+      <img src="${esc(u)}" style="width:56px;height:70px;object-fit:cover;border:1px solid ${i===0?'var(--gold)':'var(--border)'};border-radius:2px;">
+      ${i===0?'<span style="position:absolute;bottom:2px;left:2px;font-size:8px;background:var(--gold);color:var(--black);padding:1px 4px;border-radius:2px;font-family:Space Mono,monospace;">PORTADA</span>':''}
+      <button onclick="removeEditImg(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--rust);color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;">✕</button>
+    </div>`).join('') : '<div style="font-size:11px;color:var(--muted);">Sin fotos todavía.</div>';
+}
+function removeEditImg(i){ editImages.splice(i,1); renderEditThumbs(); }
+async function saveEdit(){
+  const id=document.getElementById('edit-id').value;
+  const type=document.getElementById('edit-type').value;
+  const it=(type==='auction'?auctionItems:shopItems).find(i=>i.id===id);
+  if(!it){ closeEdit(); return; }
+  const name=document.getElementById('edit-name').value.trim().substring(0,80);
+  const cat=document.getElementById('edit-cat').value;
+  const size=document.getElementById('edit-size').value.trim().substring(0,10);
+  const price=parseInt(document.getElementById('edit-price').value);
+  const emoji=document.getElementById('edit-emoji').value.trim().substring(0,4)||it.emoji||'👕';
+  const status=document.getElementById('edit-status').value;
+  const condition=document.getElementById('edit-condition').value||null;
+  const measurements=document.getElementById('edit-measurements').value.trim().substring(0,120)||null;
+  const story=document.getElementById('edit-story').value.trim().substring(0,300)||null;
+  const msg=document.getElementById('editMsg');
+  if(!name||!size||!price||price<100){ msg.textContent='Completá nombre, talla y un precio válido'; msg.className='bid-msg err'; return; }
+  msg.textContent='Guardando...'; msg.className='bid-msg ok';
+  const newUrls = document.getElementById('edit-img').files.length ? await uploadImages('edit-img','edit') : [];
+  const finalImages = editImages.concat(newUrls);
+  const updated={...it, name, cat, size, emoji, status, condition, measurements, story, images:finalImages, imageUrl:finalImages[0]||null};
+  if(type==='auction'){ updated.base_price=price; } else { updated.price=price; }
+  try{ await dbUpsertPiece(type==='auction'?auctionToRow(updated):shopToRow(updated)); }
+  catch(e){ msg.textContent=e.message||'No se pudo guardar'; msg.className='bid-msg err'; return; }
+  Object.assign(it, updated);
+  renderShopTable(); renderAuctionTable(); updateStats();
+  closeEdit();
+  showToast(`${esc(name)} actualizada ✓`,'ok');
+}
 
 function fmt(n) { return '₡' + Number(n).toLocaleString(); }
 function fmtDate(d) { if(!d) return '—'; try { return new Date(d).toLocaleString('es-CR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return '—'; } }
@@ -572,8 +699,21 @@ function initDB() {
   loadAll();
 }
 
+// Single source of truth: one fetch → distribute to every array → render everything → stats.
+// Guarantees all counts (tabs, stats, tables) come from the same snapshot and update together.
 async function loadAll() {
-  await Promise.all([loadShopItems(), loadAuctionItems(), loadBids()]);
+  let r;
+  try { r = await adminApi('load'); } catch(e) { return; }
+  const pieces = r.pieces || [];
+  shopItems    = pieces.filter(p=>p.type==='shop').map(rowToShop);
+  auctionItems = pieces.filter(p=>p.type==='auction').map(rowToAuction);
+  allBids      = r.bids || [];
+  allProfiles  = r.profiles || [];
+  buildBidSummary();
+  renderShopTable();
+  renderAuctionTable();
+  renderBidsTable();
+  renderUsersTable();
   updateStats();
 }
 
@@ -624,14 +764,26 @@ async function uploadImage(inputId, folder) {
   }
 }
 
-// ---- SHOP ITEMS ----
-async function loadShopItems() {
-  try {
-    const r = await adminApi('load');
-    shopItems = (r.pieces||[]).filter(p=>p.type==='shop').map(rowToShop);
-  } catch(e) { shopItems = []; }
-  renderShopTable();
+// Upload ALL selected files → array of URLs (for multi-photo galleries)
+async function uploadImages(inputId, folder) {
+  const files = Array.from(document.getElementById(inputId).files || []);
+  const urls = [];
+  for (let i=0;i<files.length;i++){
+    const f = files[i];
+    try {
+      const ext = (f.name.split('.').pop()||'jpg');
+      const path = `${folder}/${Date.now()}_${i}.${ext}`;
+      const { error } = await db.storage.from('zafa-images').upload(path, f, { upsert: true });
+      if (error) throw error;
+      const { data } = db.storage.from('zafa-images').getPublicUrl(path);
+      urls.push(data.publicUrl);
+    } catch(e) { console.warn('img upload failed', e); }
+  }
+  return urls;
 }
+
+// ---- SHOP ITEMS ----
+async function loadShopItems() { await loadAll(); }
 
 function saveShopItems() { updateStats(); }
 
@@ -646,10 +798,10 @@ async function addShopItem() {
   if (price < 100 || price > 9999999) { showToast('Precio inválido','err'); return; }
   if (!['camiseta','hoodie','jeans','jacket','otro'].includes(cat)) { showToast('Categoría inválida','err'); return; }
   if (!['tienda','last','sold','reserved'].includes(status)) { showToast('Estado inválido','err'); return; }
-  showToast('Subiendo imagen...','ok');
-  const imageUrl = await uploadImage('s-img', 'shop');
+  showToast('Subiendo fotos...','ok');
+  const images = await uploadImages('s-img', 'shop');
   const id = 's' + Date.now();
-  const item = {id, name, cat, size, price, emoji, status, imageUrl};
+  const item = {id, name, cat, size, price, emoji, status, imageUrl:images[0]||null, images};
   try { await dbUpsertPiece(shopToRow(item)); } catch(e) { return; }
   shopItems.push(item);
   saveShopItems();
@@ -706,6 +858,7 @@ function renderShopTable() {
           ${item.status!=='sold'?`<button class="act-btn act-sell" onclick="updateShopStatus('${item.id}','sold')">VENDIDO</button>`:''}
           ${item.status==='sold'?`<button class="act-btn act-restore" onclick="updateShopStatus('${item.id}','tienda')">RESTAURAR</button>`:''}
           ${item.status!=='reserved'&&item.status!=='sold'?`<button class="act-btn act-reserve" onclick="updateShopStatus('${item.id}','reserved')">RESERVAR</button>`:''}
+          <button class="act-btn" style="background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.3);" onclick="editPiece('${item.id}')">✎ EDITAR</button>
           <button class="act-btn act-delete" onclick="deleteShopItem('${item.id}')">✕</button>
         </div>
       </td>
@@ -713,13 +866,7 @@ function renderShopTable() {
 }
 
 // ---- AUCTION ITEMS ----
-async function loadAuctionItems() {
-  try {
-    const r = await adminApi('load');
-    auctionItems = (r.pieces||[]).filter(p=>p.type==='auction').map(rowToAuction);
-  } catch(e) { auctionItems = []; }
-  renderAuctionTable();
-}
+async function loadAuctionItems() { await loadAll(); }
 
 function saveAuctionItems() { updateStats(); }
 
@@ -735,10 +882,10 @@ async function addAuctionItem() {
   if (!name || !size || !base_price) { showToast('Completá nombre, talla y precio base','err'); return; }
   if (base_price < 100 || base_price > 9999999) { showToast('Precio base inválido','err'); return; }
   if (!['Jacket','Hoodie','Jeans','Camiseta','Otro'].includes(cat)) { showToast('Categoría inválida','err'); return; }
-  showToast('Subiendo imagen...','ok');
-  const imageUrl = await uploadImage('a-img', 'auction');
+  showToast('Subiendo fotos...','ok');
+  const images = await uploadImages('a-img', 'auction');
   const id = 'a' + Date.now();
-  const item = {id, name, cat, size, base_price, emoji, status:'active', imageUrl, condition, measurements, story};
+  const item = {id, name, cat, size, base_price, emoji, status:'active', imageUrl:images[0]||null, images, condition, measurements, story};
   try { await dbUpsertPiece(auctionToRow(item)); } catch(e) { return; }
   auctionItems.push(item);
   saveAuctionItems();
@@ -857,6 +1004,7 @@ function renderAuctionTable() {
           ${item.status==='active'?`<button class="act-btn act-close" onclick="updateAuctionStatus('${item.id}','closed')">CERRAR</button>`:''}
           ${item.status!=='active'?`<button class="act-btn act-restore" onclick="updateAuctionStatus('${item.id}','active')">REABRIR</button>`:''}
           ${item.status==='closed'?`<button class="act-btn act-sell" onclick="moveToShop('${item.id}')">🏪 MOVER A TIENDA</button>`:''}
+          <button class="act-btn" style="background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.3);" onclick="editPiece('${item.id}')">✎ EDITAR</button>
           <button class="act-btn act-delete" onclick="deleteAuctionItem('${item.id}')">ELIMINAR</button>
         </div>
       </td>
@@ -865,41 +1013,27 @@ function renderAuctionTable() {
 }
 
 // ---- BIDS ----
-async function loadBids() {
-  try {
-    const r = await adminApi('load');
-    allBids = r.bids || [];
-    allProfiles = r.profiles || [];
-
-    // Build top3 per piece — deduplicate by bidder name (keep their highest bid)
-    bidSummary = {};
-    allBids.forEach(bid => {
-      if (!bidSummary[bid.piece_id]) bidSummary[bid.piece_id] = {top3:[], count:0};
-      const existing = bidSummary[bid.piece_id].top3.find(b => b.name === bid.bidder_name);
-      if (!existing) {
-        bidSummary[bid.piece_id].top3.push({amount:bid.amount, name:bid.bidder_name, phone:bid.bidder_phone||''});
-      } else if (bid.amount > existing.amount) {
-        existing.amount = bid.amount;
-        existing.phone = bid.bidder_phone || existing.phone;
-      }
-    });
-    // Sort top3 by amount desc, keep only top 3, count all bids per piece
-    Object.keys(bidSummary).forEach(pid => {
-      bidSummary[pid].top3.sort((a,b)=>b.amount-a.amount);
-      bidSummary[pid].top3 = bidSummary[pid].top3.slice(0,3);
-      bidSummary[pid].count = allBids.filter(b=>b.piece_id===pid).length;
-      // convenience
-      const t = bidSummary[pid].top3[0];
-      if (t) { bidSummary[pid].top_bid=t.amount; bidSummary[pid].top_bidder=t.name; bidSummary[pid].top_phone=t.phone; }
-    });
-
-    renderBidsTable();
-    renderAuctionTable();
-    updateStats();
-  } catch(e) {
-    console.error(e);
-  }
+function buildBidSummary() {
+  bidSummary = {};
+  allBids.forEach(bid => {
+    if (!bidSummary[bid.piece_id]) bidSummary[bid.piece_id] = {top3:[], count:0};
+    const existing = bidSummary[bid.piece_id].top3.find(b => b.name === bid.bidder_name);
+    if (!existing) {
+      bidSummary[bid.piece_id].top3.push({amount:bid.amount, name:bid.bidder_name, phone:bid.bidder_phone||''});
+    } else if (bid.amount > existing.amount) {
+      existing.amount = bid.amount;
+      existing.phone = bid.bidder_phone || existing.phone;
+    }
+  });
+  Object.keys(bidSummary).forEach(pid => {
+    bidSummary[pid].top3.sort((a,b)=>b.amount-a.amount);
+    bidSummary[pid].top3 = bidSummary[pid].top3.slice(0,3);
+    bidSummary[pid].count = allBids.filter(b=>b.piece_id===pid).length;
+    const t = bidSummary[pid].top3[0];
+    if (t) { bidSummary[pid].top_bid=t.amount; bidSummary[pid].top_bidder=t.name; bidSummary[pid].top_phone=t.phone; }
+  });
 }
+async function loadBids() { await loadAll(); }
 
 function renderBidsTable() {
   const q = document.getElementById('bidsSearch')?.value.toLowerCase() || '';
@@ -996,6 +1130,9 @@ async function loadDropConfig() {
   document.getElementById('cfg-hero-desc').value = cfg.hero_desc || '🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲';
   document.getElementById('cfg-ended-text').value = cfg.ended_text || 'Estamos notificando a los ganadores.';
   document.getElementById('cfg-whatsapp').value = cfg.whatsapp || '50685019010';
+  document.getElementById('cfg-early').value = (cfg.early_access_hours!=null?cfg.early_access_hours:9);
+  document.getElementById('cfg-antisnipe').value = (cfg.antisnipe_minutes!=null?cfg.antisnipe_minutes:2);
+  document.getElementById('cfg-increment').value = (cfg.bid_increment!=null?cfg.bid_increment:500);
   updateDropState();
   renderTimeline();
   document.getElementById('cfg-preview-start').oninput = ()=>{updateDropState();renderTimeline();};
@@ -1021,8 +1158,13 @@ async function saveDropConfig() {
     hero_desc: document.getElementById('cfg-hero-desc').value.trim() || '🗲 ZAFA deriva del verbo zafar — liberarse de lo ordinario, eludir lo genérico, escapar de una moda que no dice nada. Piezas seleccionadas a mano con obsesión por el detalle. Cada drop es único — cuando se acaba, se acaba. 🗲',
     ended_text: document.getElementById('cfg-ended-text').value.trim() || 'Estamos notificando a los ganadores.',
     whatsapp: document.getElementById('cfg-whatsapp').value.trim() || '50685019010',
+    early_access_hours: parseInt(document.getElementById('cfg-early').value),
+    antisnipe_minutes: parseInt(document.getElementById('cfg-antisnipe').value),
+    bid_increment: parseInt(document.getElementById('cfg-increment').value)||500,
     updated_at: new Date().toISOString(),
   };
+  if(isNaN(row.early_access_hours)||row.early_access_hours<0) row.early_access_hours=9;
+  if(isNaN(row.antisnipe_minutes)||row.antisnipe_minutes<0) row.antisnipe_minutes=2;
   try { await adminApi('saveConfig', { row }); }
   catch(e) { showCfgMsg(e.message, 'err'); return; }
   updateDropState();

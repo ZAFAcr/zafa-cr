@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "include": ["/send-verification", "/admin-api"],
+  "include": ["/send-verification", "/admin-api", "/outbid"],
   "exclude": []
 }
- 
